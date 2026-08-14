@@ -1,0 +1,226 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             x:Class="DarsJadvali.Desktop.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="20" />
+      <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+
+    <Style Selector="Border.karta">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="18,14" />
+      <Setter Property="Margin" Value="0,0,12,12" />
+      <Setter Property="MinWidth" Value="170" />
+    </Style>
+
+    <Style Selector="Border.karta TextBlock.raqam">
+      <Setter Property="FontSize" Value="28" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <!-- Tekshiruv natijasidagi bitta konflikt -->
+    <DataTemplate x:Key="ConflictTemplate" x:DataType="vm:ConflictRowViewModel">
+      <Border Background="{Binding BackgroundBrush}"
+              CornerRadius="4"
+              Padding="10,7"
+              Margin="0,0,0,6">
+        <StackPanel Orientation="Horizontal">
+          <Border Width="4"
+                  CornerRadius="2"
+                  Margin="0,0,10,0"
+                  Background="{Binding AccentBrush}" />
+          <StackPanel>
+            <TextBlock Text="{Binding Code}"
+                       FontSize="11"
+                       FontWeight="Bold"
+                       Foreground="{Binding AccentBrush}" />
+            <TextBlock Text="{Binding Message}"
+                       TextWrapping="Wrap"
+                       Margin="0,2,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+    <StackPanel>
+      <TextBlock Classes="AppPageTitle" Text="Bosh sahifa" />
+
+      <!-- Sanoq kartochkalari -->
+      <WrapPanel>
+        <Border Classes="karta">
+          <StackPanel>
+            <TextBlock Classes="AppHintText" Text="O'qituvchilar" />
+            <TextBlock Classes="raqam" Text="{Binding TeacherCount}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="karta">
+          <StackPanel>
+            <TextBlock Classes="AppHintText" Text="Fanlar" />
+            <TextBlock Classes="raqam" Text="{Binding SubjectCount}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="karta">
+          <StackPanel>
+            <TextBlock Classes="AppHintText" Text="Sinflar" />
+            <TextBlock Classes="raqam" Text="{Binding ClassGroupCount}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="karta">
+          <StackPanel>
+            <TextBlock Classes="AppHintText" Text="Biriktirmalar" />
+            <TextBlock Classes="raqam" Text="{Binding AssignmentCount}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="karta">
+          <StackPanel>
+            <TextBlock Classes="AppHintText" Text="Qo'yilgan darslar" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="raqam" Text="{Binding PlacedLessonCount}" />
+              <TextBlock Text="{Binding WeeklyHoursText}"
+                         FontSize="16"
+                         Margin="6,0,0,4"
+                         VerticalAlignment="Bottom"
+                         Foreground="{DynamicResource AppMutedTextBrush}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+
+      <!-- Avtomatik tuzish -->
+      <Border Classes="panel">
+        <StackPanel>
+          <TextBlock Classes="AppSectionTitle" Text="Jadvalni avtomatik tuzish" />
+          <TextBlock Classes="AppHintText" Text="{Binding GeneratorName}" />
+          <TextBlock Classes="AppHintText"
+                     Margin="0,2,0,12"
+                     TextWrapping="Wrap"
+                     Text="{Binding GeneratorDescription}" />
+
+          <WrapPanel>
+            <Button Content="Avtomatik tuzish"
+                    Command="{Binding GenerateCommand}"
+                    Padding="18,6"
+                    Margin="0,0,10,0" />
+            <Button Content="Bekor qilish"
+                    Command="{Binding CancelGenerationCommand}"
+                    Padding="18,6"
+                    Margin="0,0,10,0"
+                    IsVisible="{Binding IsGenerating}" />
+            <Button Content="Yangilash"
+                    Command="{Binding RefreshCommand}"
+                    Margin="0,0,10,0" />
+            <Button Content="PDF yuklab olish"
+                    Command="{Binding ExportPdfCommand}"
+                    Margin="0,0,10,0" />
+            <Button Content="Jadvalni tozalash"
+                    Command="{Binding ClearScheduleCommand}"
+                    Foreground="{DynamicResource AppErrorBrush}" />
+          </WrapPanel>
+
+          <ProgressBar Height="8"
+                       Minimum="0"
+                       Margin="0,14,0,0"
+                       Maximum="{Binding GenerationProgressMax}"
+                       Value="{Binding GenerationProgressValue, Mode=OneWay}"
+                       IsVisible="{Binding IsGenerating}" />
+
+          <TextBlock Classes="AppHintText"
+                     Margin="0,8,0,0"
+                     TextWrapping="Wrap"
+                     Text="{Binding GenerationMessage}"
+                     IsVisible="{Binding HasGenerationMessage}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Tekshiruv -->
+      <Border Classes="panel">
+        <StackPanel>
+          <TextBlock Classes="AppSectionTitle" Text="Jadvalni tekshirish" />
+          <Button Content="Butun jadvalni tekshirish"
+                  Command="{Binding ValidateAllCommand}"
+                  HorizontalAlignment="Left"
+                  Padding="18,6" />
+
+          <TextBlock Text="{Binding ValidationSummary}"
+                     Margin="0,12,0,0"
+                     FontWeight="SemiBold"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasValidationResult}" />
+
+          <ItemsControl ItemsSource="{Binding ValidationConflicts}"
+                        ItemTemplate="{StaticResource ConflictTemplate}"
+                        Margin="0,10,0,0" />
+        </StackPanel>
+      </Border>
+
+      <!-- Maktab jadvali -->
+      <Border Classes="panel">
+        <StackPanel>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Classes="AppSectionTitle" Text="Maktab jadvali" Margin="0" />
+              <TextBlock Classes="AppHintText"
+                         Margin="0,2,0,0"
+                         Text="Faqat ko'rish uchun. Tahrirlash «Dars jadvali» sahifasida bajariladi." />
+            </StackPanel>
+
+            <ComboBox Grid.Column="1"
+                      Width="220"
+                      VerticalAlignment="Center"
+                      ItemsSource="{Binding ClassFilters}"
+                      SelectedItem="{Binding SelectedClassFilter, Mode=TwoWay}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ClassFilterOption">
+                  <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+
+          <TextBlock Classes="AppHintText"
+                     FontSize="13"
+                     TextWrapping="Wrap"
+                     Text="{Binding TimetableEmptyMessage}"
+                     IsVisible="{Binding IsTimetableEmpty}" />
+
+          <!-- Butun maktab uchun yagona to'r: sarlavha qatori aylantirilganda joyida qoladi -->
+          <Border BorderBrush="{DynamicResource AppBorderBrush}"
+                  BorderThickness="1"
+                  IsVisible="{Binding !IsTimetableEmpty}">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled">
+              <StackPanel>
+                <Grid x:Name="TimetableHeaderGrid" />
+                <ScrollViewer MaxHeight="620"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <Grid x:Name="TimetableBodyGrid" />
+                </ScrollViewer>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------
+# .NET / Visual Studio
+# ---------------------------------------------------------------------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.rsuser
+*.pidb
+*.svclog
+*.scc
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+*.binlog
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# ---------------------------------------------------------------------
+# Yig'ish natijalari
+# ---------------------------------------------------------------------
+publish/
+[Pp]ublish/
+*.zip
+!docs/**/*.zip
+
+# ---------------------------------------------------------------------
+# Ma'lumotlar bazasi (SQLite) — hech qachon repozitoriyga tushmasin
+# ---------------------------------------------------------------------
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ---------------------------------------------------------------------
+# Test natijalari
+# ---------------------------------------------------------------------
+[Tt]est[Rr]esult*/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# ---------------------------------------------------------------------
+# OS fayllari
+# ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+*~
+*.swp
+*.tmp
+*.log

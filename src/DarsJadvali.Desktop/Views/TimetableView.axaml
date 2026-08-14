@@ -1,0 +1,261 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:entities="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.TimetableView"
+             x:DataType="vm:TimetableViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <!-- Jadval to'rining bitta katagi -->
+    <DataTemplate x:Key="TimetableCellTemplate" x:DataType="vm:TimetableCellViewModel">
+      <Border Margin="2"
+              MinHeight="66"
+              CornerRadius="5"
+              Padding="6"
+              Background="{Binding Background}"
+              BorderBrush="{Binding BorderBrush}"
+              BorderThickness="{Binding BorderThickness}"
+              PointerPressed="OnCellPointerPressed">
+
+        <Border.ContextFlyout>
+          <MenuFlyout>
+            <MenuItem Header="O'chirish"
+                      Command="{Binding DeleteCommand}"
+                      IsEnabled="{Binding HasEntry}" />
+          </MenuFlyout>
+        </Border.ContextFlyout>
+
+        <Panel>
+          <!-- Sarlavha katagi -->
+          <StackPanel VerticalAlignment="Center"
+                      HorizontalAlignment="Center"
+                      IsVisible="{Binding IsHeader}">
+            <TextBlock Text="{Binding HeaderText}"
+                       FontWeight="SemiBold"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding HeaderSubText}"
+                       FontSize="10"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       IsVisible="{Binding HasHeaderSubText}" />
+          </StackPanel>
+
+          <!-- Dars katagi -->
+          <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsLessonCell}">
+            <TextBlock Text="{Binding SubjectName}"
+                       FontWeight="SemiBold"
+                       FontSize="13"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding PersonName}"
+                       FontSize="11"
+                       Margin="0,2,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+            <TextBlock Text="{Binding RoomDisplayText}"
+                       FontSize="10"
+                       IsVisible="{Binding HasRoom}"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+          </StackPanel>
+        </Panel>
+      </Border>
+    </DataTemplate>
+
+    <!-- Konflikt qatori -->
+    <DataTemplate x:Key="ConflictTemplate" x:DataType="vm:ConflictRowViewModel">
+      <Border Background="{Binding BackgroundBrush}"
+              CornerRadius="4"
+              Padding="8,6"
+              Margin="0,0,0,6">
+        <StackPanel Orientation="Horizontal">
+          <Border Width="4"
+                  CornerRadius="2"
+                  Margin="0,0,8,0"
+                  Background="{Binding AccentBrush}" />
+          <TextBlock Text="{Binding Message}"
+                     TextWrapping="Wrap"
+                     MaxWidth="260"
+                     Foreground="{Binding AccentBrush}" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Classes="AppPageTitle"
+               Text="Dars jadvali" />
+
+    <!-- Yuqori panel: rejim va filtr -->
+    <Border Grid.Row="1" Grid.Column="0"
+            Classes="panel"
+            Padding="14,10"
+            Margin="0,0,0,12">
+      <WrapPanel VerticalAlignment="Center">
+        <RadioButton Content="Sinf bo'yicha"
+                     GroupName="TimetableMode"
+                     IsChecked="{Binding IsClassMode, Mode=TwoWay}"
+                     VerticalAlignment="Center"
+                     Margin="0,0,16,0" />
+        <RadioButton Content="O'qituvchi bo'yicha"
+                     GroupName="TimetableMode"
+                     IsChecked="{Binding IsTeacherMode, Mode=TwoWay}"
+                     VerticalAlignment="Center"
+                     Margin="0,0,20,0" />
+
+        <ComboBox ItemsSource="{Binding ClassGroups}"
+                  SelectedItem="{Binding FilterClassGroup, Mode=TwoWay}"
+                  MinWidth="170"
+                  Margin="0,0,12,0"
+                  VerticalAlignment="Center"
+                  IsVisible="{Binding IsClassMode}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="entities:ClassGroup">
+              <TextBlock Text="{Binding Name}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <ComboBox ItemsSource="{Binding Teachers}"
+                  SelectedItem="{Binding FilterTeacher, Mode=TwoWay}"
+                  MinWidth="210"
+                  Margin="0,0,12,0"
+                  VerticalAlignment="Center"
+                  IsVisible="{Binding IsTeacherMode}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="entities:Teacher">
+              <TextBlock Text="{Binding FullName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <Button Content="Yangilash"
+                Command="{Binding RefreshGridCommand}"
+                Margin="0,0,8,0" />
+
+        <Button Content="PDF yuklab olish"
+                Command="{Binding ExportPdfCommand}"
+                Margin="0,0,8,0" />
+
+        <Button Content="Jadvalni tozalash"
+                Command="{Binding ClearScheduleCommand}"
+                Foreground="{DynamicResource AppErrorBrush}" />
+      </WrapPanel>
+    </Border>
+
+    <!-- To'r -->
+    <Border Grid.Row="2" Grid.Column="0" Classes="panel" Padding="8">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding Cells}"
+                      ItemTemplate="{StaticResource TimetableCellTemplate}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="{Binding GridColumnCount}" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+
+    <!-- O'ng panel: dars qo'yish -->
+    <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+            Classes="panel"
+            Width="340"
+            Margin="16,0,0,0"
+            Padding="16">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <TextBlock Classes="AppSectionTitle" Text="Dars qo'yish" />
+
+          <Border Background="{DynamicResource AppHeaderBrush}"
+                  CornerRadius="4"
+                  Padding="10,8"
+                  Margin="0,0,0,12">
+            <StackPanel>
+              <TextBlock Classes="AppHintText" Text="Tanlangan katak:" />
+              <TextBlock Text="{Binding SelectedCellText}"
+                         FontWeight="SemiBold"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="AppHintText" Text="Sinf" />
+          <ComboBox ItemsSource="{Binding ClassGroups}"
+                    SelectedItem="{Binding PlaceClassGroup, Mode=TwoWay}"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,2,0,12">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="entities:ClassGroup">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Classes="AppHintText" Text="Fan" />
+          <ComboBox ItemsSource="{Binding Subjects}"
+                    SelectedItem="{Binding PlaceSubject, Mode=TwoWay}"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,2,0,12">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="entities:Subject">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Classes="AppHintText" Text="O'qituvchi" />
+          <ComboBox ItemsSource="{Binding Teachers}"
+                    SelectedItem="{Binding PlaceTeacher, Mode=TwoWay}"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,2,0,12">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="entities:Teacher">
+                <TextBlock Text="{Binding FullName}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Classes="AppHintText" Text="Xona (ixtiyoriy)" />
+          <TextBox Text="{Binding PlaceRoom, Mode=TwoWay}"
+                   Watermark="Masalan: 12"
+                   Margin="0,2,0,14" />
+
+          <StackPanel Orientation="Horizontal">
+            <Button Content="Qo'yish"
+                    Command="{Binding PlaceCommand}"
+                    Padding="24,5" />
+            <Button Content="Katakni bo'shatish"
+                    Command="{Binding DeleteSelectedCommand}"
+                    Foreground="{DynamicResource AppErrorBrush}"
+                    Margin="10,0,0,0" />
+          </StackPanel>
+
+          <TextBlock Text="{Binding PlacementSummary}"
+                     Margin="0,14,0,0"
+                     FontWeight="SemiBold"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasPlacementSummary}" />
+
+          <ItemsControl ItemsSource="{Binding PlacementConflicts}"
+                        ItemTemplate="{StaticResource ConflictTemplate}"
+                        Margin="0,10,0,0" />
+
+          <TextBlock Classes="AppHintText"
+                     Margin="0,16,0,0"
+                     TextWrapping="Wrap"
+                     Text="Maslahat: katakni sichqonchaning chap tugmasi bilan tanlang, o'ng tugma bilan bosib darsni o'chiring." />
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

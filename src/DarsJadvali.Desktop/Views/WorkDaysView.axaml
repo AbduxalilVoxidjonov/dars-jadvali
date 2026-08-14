@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             x:Class="DarsJadvali.Desktop.Views.WorkDaysView"
+             x:DataType="vm:WorkDaysViewModel">
+
+  <DockPanel Margin="24">
+
+    <TextBlock DockPanel.Dock="Top"
+               Text="Hafta kunlari"
+               Classes="AppPageTitle" />
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,14,0,0">
+      <Button Content="Saqlash"
+              Command="{Binding SaveCommand}"
+              IsEnabled="{Binding !IsBusy}"
+              Padding="26,8" />
+      <TextBlock Text="{Binding StatusMessage}"
+                 VerticalAlignment="Center"
+                 Margin="16,0,0,0"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+    </StackPanel>
+
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- Ish kunlari -->
+      <Border Grid.Row="0"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="18"
+              MaxHeight="320"
+              Margin="0,0,0,16">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top"
+                     Text="Ish kunlari va kunlik darslar soni"
+                     Classes="AppSectionTitle"
+                     Margin="0,0,0,8" />
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Days}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:WorkDayRowViewModel">
+                <Grid ColumnDefinitions="200,140,160,*" Margin="0,6">
+                  <TextBlock Grid.Column="0"
+                             Text="{Binding DayName}"
+                             VerticalAlignment="Center"
+                             FontWeight="SemiBold" />
+
+                  <CheckBox Grid.Column="1"
+                            Content="Faol"
+                            IsChecked="{Binding IsActive, Mode=TwoWay}"
+                            VerticalAlignment="Center" />
+
+                  <ComboBox Grid.Column="2"
+                            Width="140"
+                            IsEnabled="{Binding IsActive}"
+                            ItemsSource="{Binding $parent[UserControl].((vm:WorkDaysViewModel)DataContext).LessonCountOptions}"
+                            SelectedItem="{Binding MaxLessonsPerDay, Mode=TwoWay}" />
+
+                  <TextBlock Grid.Column="3"
+                             Text="ta dars"
+                             VerticalAlignment="Center"
+                             Margin="10,0,0,0"
+                             Foreground="{DynamicResource AppMutedTextBrush}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <!-- Dars soatlari -->
+      <Border Grid.Row="1"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="18"
+              MinHeight="260">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Dars soatlari jadvali"
+                       Classes="AppSectionTitle"
+                       VerticalAlignment="Center" />
+            <Button Content="Soat qo'shish"
+                    Command="{Binding AddSlotCommand}"
+                    Margin="20,0,0,0"
+                    Padding="14,4" />
+            <TextBlock Text="Vaqt formati: HH:mm (masalan 08:30)"
+                       VerticalAlignment="Center"
+                       Margin="18,0,0,0"
+                       Classes="AppHintText" />
+          </StackPanel>
+
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="120,10,150,10,150,*" Margin="0,0,0,4">
+            <TextBlock Grid.Column="0" Text="Dars raqami" FontSize="12" Foreground="{DynamicResource AppMutedTextBrush}" />
+            <TextBlock Grid.Column="2" Text="Boshlanish" FontSize="12" Foreground="{DynamicResource AppMutedTextBrush}" />
+            <TextBlock Grid.Column="4" Text="Tugash" FontSize="12" Foreground="{DynamicResource AppMutedTextBrush}" />
+          </Grid>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Slots}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LessonSlotRowViewModel">
+                  <Grid ColumnDefinitions="120,10,150,10,150,Auto,*" Margin="0,5">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding LessonNumberText, Mode=TwoWay}"
+                             Watermark="1" />
+
+                    <TextBox Grid.Column="2"
+                             Text="{Binding StartText, Mode=TwoWay}"
+                             Watermark="08:30" />
+
+                    <TextBox Grid.Column="4"
+                             Text="{Binding EndText, Mode=TwoWay}"
+                             Watermark="09:15" />
+
+                    <Button Grid.Column="5"
+                            Content="O'chirish"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource AppErrorBrush}"
+                            Command="{Binding $parent[UserControl].((vm:WorkDaysViewModel)DataContext).RemoveSlotCommand}"
+                            CommandParameter="{Binding}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

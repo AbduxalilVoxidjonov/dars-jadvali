@@ -1,0 +1,112 @@
+<UserControl x:Class="DarsJadvali.UI.Views.ClassGroupsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:DarsJadvali.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ClassGroupsViewModel}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                   Text="Sinflar" Style="{StaticResource AppPageTitle}" />
+
+        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="Yangi qo'shish"
+                    Command="{Binding NewCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Padding="16,4" />
+            <Button Content="Tahrirlash"
+                    Command="{Binding EditCommand}"
+                    CommandParameter="{Binding SelectedClassGroup}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="10,0,0,0"
+                    Padding="16,4"
+                    IsEnabled="{Binding SelectedClassGroup, Converter={StaticResource NotNullToBoolean}}" />
+            <Button Content="O'chirish"
+                    Command="{Binding DeleteCommand}"
+                    CommandParameter="{Binding SelectedClassGroup}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="10,0,0,0"
+                    Padding="16,4"
+                    Foreground="{StaticResource AppErrorBrush}"
+                    IsEnabled="{Binding SelectedClassGroup, Converter={StaticResource NotNullToBoolean}}" />
+            <Button Content="Yangilash"
+                    Command="{Binding RefreshCommand}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Margin="10,0,0,0" />
+        </StackPanel>
+
+        <DataGrid Grid.Row="2" Grid.Column="0"
+                  ItemsSource="{Binding ClassGroups}"
+                  SelectedItem="{Binding SelectedClassGroup, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  SelectionMode="Single"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  Background="{StaticResource AppSurfaceBrush}"
+                  BorderBrush="{StaticResource AppBorderBrush}"
+                  BorderThickness="1">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Sinf" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Xona" Binding="{Binding RoomNumber}" Width="140" />
+                <DataGridTextColumn Header="O'quvchilar soni" Binding="{Binding StudentCount}" Width="160" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+                Width="340"
+                Margin="20,0,0,0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="18"
+                VerticalAlignment="Top"
+                Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource AppSectionTitle}" />
+
+                <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Sinf nomi (5-A)"
+                         Margin="0,10,0,0" />
+
+                <TextBox Text="{Binding EditRoomNumber, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Asosiy xona (ixtiyoriy)"
+                         Margin="0,16,0,0" />
+
+                <TextBox Text="{Binding EditStudentCount, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="O'quvchilar soni"
+                         Margin="0,16,0,0" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                    <Button Content="Bekor qilish"
+                            Command="{Binding CancelEditCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" />
+                    <Button Content="Saqlash"
+                            Command="{Binding SaveCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Margin="10,0,0,0"
+                            Padding="20,4" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

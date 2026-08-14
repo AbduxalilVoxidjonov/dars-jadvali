@@ -1,0 +1,198 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
+             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.AssignmentsView"
+             x:DataType="vm:AssignmentsViewModel"
+             x:CompileBindings="True">
+
+  <Grid Margin="24" RowDefinitions="Auto,*" ColumnDefinitions="280,*">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="Biriktirmalar"
+               FontSize="22"
+               FontWeight="SemiBold"
+               Margin="0,0,0,14"
+               Foreground="{DynamicResource AppTextBrush}" />
+
+    <!-- Chapda: o'qituvchilar -->
+    <Border Grid.Row="1" Grid.Column="0"
+            Margin="0,0,16,0"
+            CornerRadius="8"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top"
+                   Text="O'qituvchilar"
+                   FontSize="14"
+                   FontWeight="SemiBold"
+                   Margin="14,12,14,6"
+                   Foreground="{DynamicResource AppTextBrush}" />
+        <ListBox ItemsSource="{Binding Teachers}"
+                 SelectedItem="{Binding SelectedTeacher, Mode=TwoWay}"
+                 IsEnabled="{Binding IsNotBusy}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 HorizontalAlignment="Stretch">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="ent:Teacher">
+              <StackPanel Orientation="Horizontal" Margin="0,2">
+                <Border Width="12" Height="12" CornerRadius="6"
+                        VerticalAlignment="Center"
+                        Background="{Binding ColorCode, Converter={x:Static conv:ColorCodeToBrushConverter.Instance}}" />
+                <TextBlock Text="{Binding FullName}" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- O'ngda: tanlangan o'qituvchining biriktirmalari -->
+    <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*">
+
+      <!-- Inline tahrirlash paneli -->
+      <Border Grid.Row="0"
+              Margin="0,0,0,12"
+              Padding="16"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+        <StackPanel>
+          <TextBlock Text="{Binding EditorTitle}"
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppTextBrush}" />
+          <TextBlock Text="{Binding SelectedTeacherLabel}"
+                     FontSize="12"
+                     Margin="0,4,0,10"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+
+          <WrapPanel>
+            <StackPanel Margin="0,0,12,10">
+              <TextBlock Text="Fan" FontSize="12" Margin="0,0,0,4"
+                         Foreground="{DynamicResource AppMutedTextBrush}" />
+              <ComboBox ItemsSource="{Binding Subjects}"
+                        SelectedItem="{Binding EditSubject, Mode=TwoWay}"
+                        IsEnabled="{Binding HasSelectedTeacher}"
+                        Width="220">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="ent:Subject">
+                    <StackPanel Orientation="Horizontal">
+                      <Border Width="12" Height="12" CornerRadius="6"
+                              VerticalAlignment="Center"
+                              Background="{Binding ColorCode, Converter={x:Static conv:ColorCodeToBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Name}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel Margin="0,0,12,10">
+              <TextBlock Text="Sinf" FontSize="12" Margin="0,0,0,4"
+                         Foreground="{DynamicResource AppMutedTextBrush}" />
+              <ComboBox ItemsSource="{Binding ClassGroups}"
+                        SelectedItem="{Binding EditClassGroup, Mode=TwoWay}"
+                        IsEnabled="{Binding HasSelectedTeacher}"
+                        Width="180">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="ent:ClassGroup">
+                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel Margin="0,0,12,10">
+              <TextBlock Text="Haftalik soat" FontSize="12" Margin="0,0,0,4"
+                         Foreground="{DynamicResource AppMutedTextBrush}" />
+              <TextBox Text="{Binding EditWeeklyHours}"
+                       IsEnabled="{Binding HasSelectedTeacher}"
+                       Width="140" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,0,10">
+              <Button Content="Qo'shish"
+                      Command="{Binding NewCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Padding="16,6" />
+              <Button Content="Saqlash"
+                      Command="{Binding SaveCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Margin="10,0,0,0"
+                      Padding="16,6" />
+              <Button Content="Bekor qilish"
+                      Command="{Binding CancelEditCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Margin="10,0,0,0"
+                      Padding="16,6" />
+            </StackPanel>
+          </WrapPanel>
+
+          <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+            <Button Content="Tanlanganini tahrirlash"
+                    Command="{Binding EditCommand}"
+                    CommandParameter="{Binding SelectedRow}"
+                    IsEnabled="{Binding HasSelectedRow}"
+                    Padding="14,6" />
+            <Button Content="Tanlanganini o'chirish"
+                    Command="{Binding DeleteCommand}"
+                    CommandParameter="{Binding SelectedRow}"
+                    IsEnabled="{Binding HasSelectedRow}"
+                    Foreground="{DynamicResource AppErrorBrush}"
+                    Margin="10,0,0,0"
+                    Padding="14,6" />
+            <Button Content="Yangilash"
+                    Command="{Binding ReloadRowsCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Margin="10,0,0,0"
+                    Padding="14,6" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+        <DataGrid ItemsSource="{Binding Rows}"
+                  SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  Background="Transparent"
+                  BorderThickness="0">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Fan" Width="*"
+                                Binding="{Binding SubjectName, DataType=vm:AssignmentRowViewModel}" />
+            <DataGridTextColumn Header="Sinf" Width="120"
+                                Binding="{Binding ClassGroupName, DataType=vm:AssignmentRowViewModel}" />
+            <DataGridTextColumn Header="Haftalik soat" Width="130"
+                                Binding="{Binding WeeklyHoursCount, DataType=vm:AssignmentRowViewModel}" />
+            <DataGridTemplateColumn Header="Holati" Width="300">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:AssignmentRowViewModel">
+                  <StackPanel Margin="0,6,8,6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding HoursSummary}" FontSize="12" />
+                    <ProgressBar Minimum="0"
+                                 Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                 Value="{Binding PlacedHours, Mode=OneWay}"
+                                 Height="6"
+                                 Margin="0,4,0,0" />
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

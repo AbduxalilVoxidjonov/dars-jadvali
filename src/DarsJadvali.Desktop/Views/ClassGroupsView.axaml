@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
+             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.ClassGroupsView"
+             x:DataType="vm:ClassGroupsViewModel"
+             x:CompileBindings="True">
+
+  <Grid Margin="24" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="Sinflar"
+               FontSize="22"
+               FontWeight="SemiBold"
+               Margin="0,0,0,14"
+               Foreground="{DynamicResource AppTextBrush}" />
+
+    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,12">
+      <Button Content="Qo'shish"
+              Command="{Binding NewCommand}"
+              IsEnabled="{Binding IsNotBusy}"
+              Padding="16,6" />
+      <Button Content="Tahrirlash"
+              Command="{Binding EditCommand}"
+              CommandParameter="{Binding SelectedClassGroup}"
+              IsEnabled="{Binding HasSelection}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+      <Button Content="O'chirish"
+              Command="{Binding DeleteCommand}"
+              CommandParameter="{Binding SelectedClassGroup}"
+              IsEnabled="{Binding HasSelection}"
+              Foreground="{DynamicResource AppErrorBrush}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+      <Button Content="Yangilash"
+              Command="{Binding RefreshCommand}"
+              IsEnabled="{Binding IsNotBusy}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+    </StackPanel>
+
+    <DataGrid Grid.Row="2" Grid.Column="0"
+              ItemsSource="{Binding ClassGroups}"
+              SelectedItem="{Binding SelectedClassGroup, Mode=TwoWay}"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              SelectionMode="Single"
+              HeadersVisibility="Column"
+              GridLinesVisibility="Horizontal"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Sinf" Width="*"
+                            Binding="{Binding Name, DataType=ent:ClassGroup}" />
+        <DataGridTextColumn Header="Xona" Width="150"
+                            Binding="{Binding RoomNumber, DataType=ent:ClassGroup}" />
+        <DataGridTextColumn Header="O'quvchilar soni" Width="170"
+                            Binding="{Binding StudentCount, DataType=ent:ClassGroup}" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Inline tahrirlash paneli -->
+    <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+            Width="340"
+            Margin="20,0,0,0"
+            Padding="18"
+            CornerRadius="8"
+            VerticalAlignment="Top"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            IsVisible="{Binding IsEditing}">
+      <StackPanel>
+        <TextBlock Text="{Binding EditorTitle}"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource AppTextBrush}" />
+
+        <TextBox Text="{Binding EditName}"
+                 Watermark="Sinf nomi (masalan: 5-A)"
+                 Margin="0,14,0,0" />
+
+        <TextBlock Text="Sinf nomi takrorlanmasligi kerak."
+                   FontSize="12"
+                   Margin="0,4,0,0"
+                   Foreground="{DynamicResource AppMutedTextBrush}" />
+
+        <TextBox Text="{Binding EditRoomNumber}"
+                 Watermark="Asosiy xona (ixtiyoriy)"
+                 Margin="0,12,0,0" />
+
+        <TextBox Text="{Binding EditStudentCount}"
+                 Watermark="O'quvchilar soni"
+                 Margin="0,12,0,0" />
+
+        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+          <Button Content="Bekor qilish"
+                  Command="{Binding CancelEditCommand}"
+                  IsEnabled="{Binding IsNotBusy}" />
+          <Button Content="Saqlash"
+                  Command="{Binding SaveCommand}"
+                  IsEnabled="{Binding IsNotBusy}"
+                  Margin="10,0,0,0"
+                  Padding="20,6" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

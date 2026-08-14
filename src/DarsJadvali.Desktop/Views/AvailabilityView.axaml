@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:entities="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.AvailabilityView"
+             x:DataType="vm:AvailabilityViewModel">
+
+  <Grid Margin="24" RowDefinitions="Auto,*" ColumnDefinitions="280,*">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="O'qituvchi vaqti"
+               Classes="AppPageTitle" />
+
+    <!-- O'qituvchilar ro'yxati -->
+    <Border Grid.Row="1" Grid.Column="0"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Margin="0,0,16,0">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top"
+                   Text="O'qituvchilar"
+                   Classes="AppSectionTitle"
+                   Margin="14,12,14,6" />
+
+        <ListBox ItemsSource="{Binding Teachers}"
+                 SelectedItem="{Binding SelectedTeacher, Mode=TwoWay}"
+                 BorderThickness="0"
+                 Background="Transparent">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="entities:Teacher">
+              <TextBlock Text="{Binding FullName}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- Kunlar × dars soatlari to'ri -->
+    <Border Grid.Row="1" Grid.Column="1"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="18">
+      <DockPanel>
+
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+          <TextBlock Text="{Binding HeaderText}" Classes="AppSectionTitle" />
+
+          <!-- MUHIM IZOH: foydalanuvchilar bu qoidani tez-tez chalkashtiradi -->
+          <Border Background="#FFF8E1"
+                  BorderBrush="#FFE082"
+                  BorderThickness="1"
+                  CornerRadius="6"
+                  Padding="12"
+                  Margin="0,6,0,0">
+            <TextBlock Text="{Binding RuleText}"
+                       TextWrapping="Wrap"
+                       FontSize="13"
+                       Foreground="#5D4037" />
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <Button Content="Saqlash"
+                    Command="{Binding SaveCommand}"
+                    IsEnabled="{Binding !IsBusy}"
+                    Padding="24,6" />
+            <Button Content="Bekor qilish"
+                    Command="{Binding CancelCommand}"
+                    Margin="12,0,0,0"
+                    Padding="16,6" />
+            <TextBlock Text="{Binding StatusMessage}"
+                       VerticalAlignment="Center"
+                       Margin="16,0,0,0"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Ustun sarlavhalari: dars raqami va vaqti -->
+        <Grid DockPanel.Dock="Top"
+              ColumnDefinitions="150,120,Auto,*"
+              Margin="0,0,0,6"
+              IsVisible="{Binding HasDays}">
+          <TextBlock Grid.Column="0" Text="Kun" Classes="AppHintText" VerticalAlignment="Bottom" />
+          <TextBlock Grid.Column="1" Text="Cheklov" Classes="AppHintText" VerticalAlignment="Bottom" />
+
+          <ItemsControl Grid.Column="2" ItemsSource="{Binding Columns}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LessonColumnViewModel">
+                <StackPanel Width="62" HorizontalAlignment="Center">
+                  <TextBlock Text="{Binding NumberText}"
+                             HorizontalAlignment="Center"
+                             FontWeight="Bold"
+                             FontSize="14" />
+                  <TextBlock Text="{Binding TimeText}"
+                             HorizontalAlignment="Center"
+                             FontSize="10"
+                             Foreground="{DynamicResource AppMutedTextBrush}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Grid>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Days}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TeacherDayRowViewModel">
+                <Border BorderBrush="{DynamicResource AppBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="0,8">
+                  <Grid ColumnDefinitions="150,120,Auto,*">
+
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding DayName}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+
+                    <CheckBox Grid.Column="1"
+                              Content="Cheklov bor"
+                              IsChecked="{Binding HasRestriction, Mode=TwoWay}"
+                              VerticalAlignment="Center" />
+
+                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Cells}" VerticalAlignment="Center">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LessonCellViewModel">
+                          <CheckBox Width="62"
+                                    HorizontalAlignment="Center"
+                                    HorizontalContentAlignment="Center"
+                                    IsEnabled="{Binding IsEnabled}"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                      <TextBlock Text="cheklov yo'q — kun bo'yi ishlaydi"
+                                 IsVisible="{Binding NoRestrictionHint}"
+                                 VerticalAlignment="Center"
+                                 Classes="AppHintText" />
+
+                      <Button Content="Hammasi"
+                              Command="{Binding SelectAllCommand}"
+                              Margin="10,0,0,0"
+                              Padding="10,3"
+                              FontSize="12" />
+                      <Button Content="Hech biri"
+                              Command="{Binding ClearAllCommand}"
+                              IsEnabled="{Binding HasRestriction}"
+                              Margin="6,0,0,0"
+                              Padding="10,3"
+                              FontSize="12" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

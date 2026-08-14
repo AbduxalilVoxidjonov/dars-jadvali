@@ -1,0 +1,426 @@
+<UserControl x:Class="DarsJadvali.UI.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:DarsJadvali.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:DashboardViewModel}">
+
+    <UserControl.Resources>
+        <Style x:Key="StatCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="18,14" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="MinWidth" Value="180" />
+        </Style>
+
+        <!-- Jadvaldagi bitta katak (faqat ko'rish) -->
+        <DataTemplate x:Key="DashboardCellTemplate" DataType="{x:Type vm:DashboardCellViewModel}">
+            <Border MinHeight="48" Margin="1" CornerRadius="3" Padding="5,3" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasEntry}" Value="True">
+                                <Setter Property="Background"
+                                        Value="{Binding ColorCode, Converter={StaticResource ColorCodeToBrush}, ConverterParameter=Light}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <StackPanel VerticalAlignment="Center"
+                            Visibility="{Binding HasEntry, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Text="{Binding SubjectName}"
+                               FontWeight="SemiBold"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding TeacherName}"
+                               FontSize="10"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0" />
+                    <TextBlock Text="{Binding RoomText, StringFormat='Xona: {0}'}"
+                               FontSize="10"
+                               Foreground="{StaticResource AppMutedTextBrush}"
+                               Visibility="{Binding RoomText, Converter={StaticResource EmptyStringToVisibility}}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Bitta soat qatori: soat ustuni + kunlar kataklari -->
+        <DataTemplate x:Key="ClassTimetableRowTemplate" DataType="{x:Type vm:ClassTimetableRowViewModel}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="TimetableLessonColumn" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        MinWidth="86"
+                        Padding="8,4"
+                        BorderBrush="{StaticResource AppBorderBrush}"
+                        BorderThickness="0,0,1,1">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LessonText}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding TimeText}"
+                                   FontSize="10"
+                                   Foreground="{StaticResource AppMutedTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   Visibility="{Binding TimeText, Converter={StaticResource EmptyStringToVisibility}}" />
+                    </StackPanel>
+                </Border>
+
+                <ItemsControl Grid.Column="1"
+                              ItemsSource="{Binding Cells}"
+                              ItemTemplate="{StaticResource DashboardCellTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" Columns="{Binding DayCount}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Bitta sinf guruhi: chapda sinf nomi, o'ngda barcha soat qatorlari -->
+        <DataTemplate x:Key="ClassTimetableTemplate" DataType="{x:Type vm:ClassTimetableViewModel}">
+            <Border BorderBrush="{StaticResource AppMutedTextBrush}" BorderThickness="0,2,0,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{StaticResource AppSurfaceBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAlternate}" Value="True">
+                                <Setter Property="Background" Value="#F6F4FB" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="TimetableClassColumn" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            MinWidth="128"
+                            Padding="10,8"
+                            BorderBrush="{StaticResource AppBorderBrush}"
+                            BorderThickness="0,0,1,0">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ClassName}"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding RoomText}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource AppMutedTextBrush}"
+                                       HorizontalAlignment="Center"
+                                       Visibility="{Binding RoomText, Converter={StaticResource EmptyStringToVisibility}}" />
+                            <TextBlock Text="{Binding SummaryText}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource AppMutedTextBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,2,0,0" />
+                            <Button Content="Tahrirlash"
+                                    FontSize="11"
+                                    Padding="12,0"
+                                    Margin="0,8,0,0"
+                                    HorizontalAlignment="Center"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Command="{Binding DataContext.EditClassCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                    CommandParameter="{Binding}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl Grid.Column="1"
+                                  ItemsSource="{Binding Rows}"
+                                  ItemTemplate="{StaticResource ClassTimetableRowTemplate}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel>
+            <TextBlock Text="Bosh sahifa" Style="{StaticResource AppPageTitle}" />
+
+            <!-- Sanoq kartochkalari -->
+            <WrapPanel>
+                <Border Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="AccountTie" Width="20" Height="20" Foreground="#1976D2" />
+                            <TextBlock Text="O'qituvchilar" Margin="8,0,0,0" Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding TeacherCount}" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="BookOpenPageVariant" Width="20" Height="20" Foreground="#7B1FA2" />
+                            <TextBlock Text="Fanlar" Margin="8,0,0,0" Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding SubjectCount}" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="GoogleClassroom" Width="20" Height="20" Foreground="#388E3C" />
+                            <TextBlock Text="Sinflar" Margin="8,0,0,0" Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ClassGroupCount}" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="LinkVariant" Width="20" Height="20" Foreground="#F57C00" />
+                            <TextBlock Text="Biriktirmalar" Margin="8,0,0,0" Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding AssignmentCount}" FontSize="30" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource StatCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="TableLarge" Width="20" Height="20" Foreground="#00796B" />
+                            <TextBlock Text="Qo'yilgan darslar" Margin="8,0,0,0" Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="{Binding PlacedLessonCount}" FontSize="30" FontWeight="Bold" />
+                            <TextBlock Text="{Binding WeeklyHoursTotal, StringFormat=' / {0}'}"
+                                       FontSize="18"
+                                       VerticalAlignment="Bottom"
+                                       Margin="4,0,0,4"
+                                       Foreground="{StaticResource AppMutedTextBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- Avtomatik tuzish -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,8,12,16">
+                <StackPanel>
+                    <TextBlock Text="Jadvalni avtomatik tuzish" Style="{StaticResource AppSectionTitle}" />
+                    <TextBlock Text="{Binding GeneratorName, StringFormat='Algoritm: {0}'}"
+                               Style="{StaticResource AppHintText}" />
+                    <TextBlock Text="{Binding GeneratorDescription}"
+                               Style="{StaticResource AppHintText}"
+                               Margin="0,2,0,12" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Jadvalni avtomatik tuzish"
+                                Command="{Binding GenerateCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Padding="18,6" />
+                        <Button Content="Bekor qilish"
+                                Command="{Binding CancelGenerationCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Margin="12,0,0,0"
+                                Padding="18,6"
+                                Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibility}}" />
+                        <Button Content="Yangilash"
+                                Command="{Binding RefreshCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Margin="12,0,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,14,0,0"
+                                Visibility="{Binding IsGenerating, Converter={StaticResource BooleanToVisibility}}">
+                        <ProgressBar Height="8"
+                                     Minimum="0"
+                                     Maximum="{Binding GenerationProgressMax}"
+                                     Value="{Binding GenerationProgressValue, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding GenerationMessage}"
+                               Style="{StaticResource AppHintText}"
+                               Margin="0,8,0,0"
+                               Visibility="{Binding GenerationMessage, Converter={StaticResource EmptyStringToVisibility}}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Tekshiruv -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,0,12,24">
+                <StackPanel>
+                    <TextBlock Text="Jadvalni tekshirish" Style="{StaticResource AppSectionTitle}" />
+                    <Button Content="Butun jadvalni tekshirish"
+                            Command="{Binding ValidateAllCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            HorizontalAlignment="Left"
+                            Padding="18,6" />
+
+                    <TextBlock Text="{Binding ValidationSummary}"
+                               Margin="0,12,0,0"
+                               FontWeight="SemiBold"
+                               Visibility="{Binding ValidationSummary, Converter={StaticResource EmptyStringToVisibility}}" />
+
+                    <ItemsControl ItemsSource="{Binding ValidationConflicts}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}, ConverterParameter=Background}"
+                                        BorderBrush="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}"
+                                        BorderThickness="0,0,0,0"
+                                        CornerRadius="4"
+                                        Padding="10,7"
+                                        Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="4"
+                                                CornerRadius="2"
+                                                Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}"
+                                                Margin="0,0,10,0" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Code}"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
+                                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Maktab jadvali -->
+            <Border Background="{StaticResource AppSurfaceBrush}"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,0,12,24"
+                    Grid.IsSharedSizeScope="True">
+                <StackPanel>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Maktab jadvali" Style="{StaticResource AppSectionTitle}" Margin="0" />
+                            <TextBlock Text="Faqat ko'rish uchun. Tahrirlash «Dars jadvali» sahifasida bajariladi."
+                                       Style="{StaticResource AppHintText}"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding ClassFilters}"
+                                  SelectedItem="{Binding SelectedClassFilter, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  materialDesign:HintAssist.Hint="Sinf"
+                                  VerticalAlignment="Center"
+                                  Width="220" />
+                    </Grid>
+
+                    <TextBlock Text="{Binding TimetableEmptyMessage}"
+                               Style="{StaticResource AppHintText}"
+                               FontSize="13"
+                               Visibility="{Binding IsTimetableEmpty, Converter={StaticResource BooleanToVisibility}}" />
+
+                    <StackPanel Visibility="{Binding IsTimetableEmpty, Converter={StaticResource BooleanToVisibility}, ConverterParameter=Invert}">
+                        <!-- Sarlavha qatori — ro'yxat aylantirilganda joyida qoladi -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="TimetableClassColumn" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource AppHeaderBrush}"
+                                    Padding="10,8"
+                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                    BorderThickness="0,0,1,0">
+                                <TextBlock Text="SINF"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource AppTextBrush}" />
+                            </Border>
+
+                            <Grid Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="TimetableLessonColumn" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0"
+                                        Background="{StaticResource AppHeaderBrush}"
+                                        Padding="8,8"
+                                        BorderBrush="{StaticResource AppBorderBrush}"
+                                        BorderThickness="0,0,1,0">
+                                    <TextBlock Text="SOAT"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center" />
+                                </Border>
+
+                                <ItemsControl Grid.Column="1" ItemsSource="{Binding DayHeaders}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Rows="1" Columns="{Binding DayCount}" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{StaticResource AppHeaderBrush}"
+                                                    BorderBrush="{StaticResource AppBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="3"
+                                                    Margin="1"
+                                                    Padding="4,6">
+                                                <TextBlock Text="{Binding}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </Grid>
+
+                        <ScrollViewer MaxHeight="640"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding ClassTimetables}"
+                                          ItemTemplate="{StaticResource ClassTimetableTemplate}" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

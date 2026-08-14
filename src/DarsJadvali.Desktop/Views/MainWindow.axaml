@@ -1,0 +1,144 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+        xmlns:models="clr-namespace:DarsJadvali.Desktop.Models"
+        xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+        x:Class="DarsJadvali.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Dars Jadvali Tuzuvchi"
+        Width="1280"
+        Height="800"
+        MinWidth="1024"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        FontSize="13"
+        Background="{StaticResource AppBackgroundBrush}">
+
+  <Grid ColumnDefinitions="240,*">
+
+    <!-- ================= Chap menyu ================= -->
+    <Border Grid.Column="0" Background="{StaticResource AppMenuBrush}">
+      <DockPanel LastChildFill="True">
+
+        <StackPanel DockPanel.Dock="Top" Margin="16,20,16,16" Spacing="4">
+          <TextBlock Text="{Binding AppTitle}"
+                     Foreground="White"
+                     FontSize="17"
+                     FontWeight="SemiBold"
+                     TextWrapping="Wrap" />
+          <TextBlock Text="{Binding AppVersion}"
+                     Foreground="#CFC6E8"
+                     FontSize="11" />
+        </StackPanel>
+
+        <ListBox x:Name="MenuList"
+                 ItemsSource="{Binding MenuItems}"
+                 SelectedItem="{Binding SelectedMenuItem, Mode=TwoWay}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="4,4"
+                 HorizontalAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:MenuItemModel">
+              <TextBlock Text="{Binding Title}"
+                         FontSize="14"
+                         Margin="6,2"
+                         VerticalAlignment="Center" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="14,10" />
+              <Setter Property="Margin" Value="8,2" />
+              <Setter Property="CornerRadius" Value="6" />
+              <Setter Property="Foreground" Value="#E6E1F5" />
+              <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="ListBoxItem:pointerover">
+              <Setter Property="Background" Value="#22FFFFFF" />
+              <Setter Property="Foreground" Value="White" />
+            </Style>
+            <Style Selector="ListBoxItem:selected">
+              <Setter Property="Background" Value="#44FFFFFF" />
+              <Setter Property="Foreground" Value="White" />
+            </Style>
+          </ListBox.Styles>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- ================= O'ng tomon: sahifa ================= -->
+    <DockPanel Grid.Column="1" LastChildFill="True">
+
+      <!-- Doim ko'rinib turadigan tanlagich: qaysi o'quv yili va qaysi jadval bilan ishlanyapti -->
+      <Border DockPanel.Dock="Top"
+              Background="{StaticResource AppSurfaceBrush}"
+              BorderBrush="{StaticResource AppBorderBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="16,8">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+          <TextBlock Text="O'quv yili:"
+                     FontSize="12"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource AppMutedTextBrush}" />
+          <ComboBox ItemsSource="{Binding AcademicYears}"
+                    SelectedItem="{Binding SelectedAcademicYear, Mode=TwoWay}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    MinWidth="150"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="ent:AcademicYear">
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Text="Dars jadvali:"
+                     FontSize="12"
+                     Margin="20,0,0,0"
+                     VerticalAlignment="Center"
+                     Foreground="{StaticResource AppMutedTextBrush}" />
+          <ComboBox ItemsSource="{Binding Schedules}"
+                    SelectedItem="{Binding SelectedSchedule, Mode=TwoWay}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    MinWidth="200"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="ent:Schedule">
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Text="(faol jadval — barcha sahifalar shu jadval bo'yicha ishlaydi)"
+                     FontSize="11"
+                     Margin="14,0,0,0"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     Foreground="{StaticResource AppMutedTextBrush}" />
+        </StackPanel>
+      </Border>
+
+      <Border DockPanel.Dock="Bottom"
+              Background="{StaticResource AppSurfaceBrush}"
+              BorderBrush="{StaticResource AppBorderBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="16,6">
+        <TextBlock Text="{Binding StatusMessage}"
+                   Foreground="{StaticResource AppMutedTextBrush}"
+                   FontSize="12" />
+      </Border>
+
+      <ProgressBar DockPanel.Dock="Top"
+                   Height="4"
+                   IsIndeterminate="True"
+                   IsVisible="{Binding IsBusy}" />
+
+      <ContentControl Content="{Binding CurrentViewModel}" />
+    </DockPanel>
+  </Grid>
+</Window>

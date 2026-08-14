@@ -1,0 +1,235 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
+             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.AcademicYearsView"
+             x:DataType="vm:AcademicYearsViewModel"
+             x:CompileBindings="True">
+
+  <Grid Margin="24" RowDefinitions="Auto,Auto,*" ColumnDefinitions="320,*">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="O'quv yillari va dars jadvallari"
+               FontSize="22"
+               FontWeight="SemiBold"
+               Margin="0,0,0,6"
+               Foreground="{DynamicResource AppTextBrush}" />
+
+    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="Har bir o'quv yili ichida bir nechta dars jadvali (variant) bo'lishi mumkin. Eski o'quv yillari saqlanib qoladi."
+               FontSize="12"
+               TextWrapping="Wrap"
+               Margin="0,0,0,14"
+               Foreground="{DynamicResource AppMutedTextBrush}" />
+
+    <!-- ============ Chapda: o'quv yillari ============ -->
+    <Grid Grid.Row="2" Grid.Column="0" RowDefinitions="Auto,*,Auto" Margin="0,0,16,0">
+
+      <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+        <Button Content="Qo'shish"
+                Command="{Binding NewYearCommand}"
+                IsEnabled="{Binding IsNotBusy}"
+                Padding="14,6" />
+        <Button Content="Nomini o'zgartirish"
+                Command="{Binding EditYearCommand}"
+                IsEnabled="{Binding HasSelectedYear}"
+                Margin="8,0,0,0"
+                Padding="14,6" />
+        <Button Content="O'chirish"
+                Command="{Binding DeleteYearCommand}"
+                IsEnabled="{Binding HasSelectedYear}"
+                Foreground="{DynamicResource AppErrorBrush}"
+                Margin="8,0,0,0"
+                Padding="14,6" />
+      </StackPanel>
+
+      <Border Grid.Row="1"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+        <ListBox ItemsSource="{Binding Years}"
+                 SelectedItem="{Binding SelectedYear, Mode=TwoWay}"
+                 IsEnabled="{Binding IsNotBusy}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 HorizontalAlignment="Stretch">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="ent:AcademicYear">
+              <StackPanel Margin="0,4">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Note}"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
+                           IsVisible="{Binding Note, Converter={x:Static conv:StringNotEmptyConverter.Instance}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+
+      <!-- O'quv yili shakli -->
+      <Border Grid.Row="2"
+              Margin="0,12,0,0"
+              Padding="16"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              IsVisible="{Binding IsYearEditing}">
+        <StackPanel>
+          <TextBlock Text="{Binding YearEditorTitle}"
+                     FontSize="15"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppTextBrush}" />
+
+          <TextBox Text="{Binding EditYearName}"
+                   Watermark="Nomi (masalan: 2025–2026)"
+                   Margin="0,12,0,0" />
+
+          <TextBox Text="{Binding EditYearStartYear}"
+                   Watermark="Boshlanish yili (masalan: 2025)"
+                   Margin="0,10,0,0" />
+
+          <TextBox Text="{Binding EditYearNote}"
+                   Watermark="Izoh (ixtiyoriy)"
+                   Margin="0,10,0,0" />
+
+          <StackPanel Orientation="Horizontal" Margin="0,14,0,0" HorizontalAlignment="Right">
+            <Button Content="Bekor qilish"
+                    Command="{Binding CancelYearEditCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+            <Button Content="Saqlash"
+                    Command="{Binding SaveYearCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Margin="10,0,0,0"
+                    Padding="18,6" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ============ O'ngda: tanlangan yilning jadvallari ============ -->
+    <Grid Grid.Row="2" Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto">
+
+      <TextBlock Grid.Row="0"
+                 Text="{Binding SelectedYearTitle}"
+                 FontSize="16"
+                 FontWeight="SemiBold"
+                 Margin="0,0,0,8"
+                 Foreground="{DynamicResource AppTextBrush}" />
+
+      <WrapPanel Grid.Row="1" Margin="0,0,0,8">
+        <Button Content="Qo'shish"
+                Command="{Binding NewScheduleCommand}"
+                IsEnabled="{Binding HasSelectedYear}"
+                Margin="0,0,8,6"
+                Padding="14,6" />
+        <Button Content="Nomini o'zgartirish"
+                Command="{Binding EditScheduleCommand}"
+                IsEnabled="{Binding HasSelectedSchedule}"
+                Margin="0,0,8,6"
+                Padding="14,6" />
+        <Button Content="Nusxalash"
+                Command="{Binding DuplicateScheduleCommand}"
+                IsEnabled="{Binding HasSelectedSchedule}"
+                Margin="0,0,8,6"
+                Padding="14,6" />
+        <Button Content="Faol qilish"
+                Command="{Binding ActivateScheduleCommand}"
+                IsEnabled="{Binding HasSelectedSchedule}"
+                Margin="0,0,8,6"
+                Padding="14,6" />
+        <Button Content="O'chirish"
+                Command="{Binding DeleteScheduleCommand}"
+                IsEnabled="{Binding HasSelectedSchedule}"
+                Foreground="{DynamicResource AppErrorBrush}"
+                Margin="0,0,8,6"
+                Padding="14,6" />
+        <Button Content="Yangilash"
+                Command="{Binding RefreshCommand}"
+                IsEnabled="{Binding IsNotBusy}"
+                Margin="0,0,0,6"
+                Padding="14,6" />
+      </WrapPanel>
+
+      <Border Grid.Row="2"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+        <DataGrid ItemsSource="{Binding Schedules}"
+                  SelectedItem="{Binding SelectedSchedule, Mode=TwoWay}"
+                  IsEnabled="{Binding IsNotBusy}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  Background="Transparent"
+                  BorderThickness="0">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Jadval nomi" Width="*"
+                                Binding="{Binding Name, DataType=vm:ScheduleRowViewModel}" />
+            <DataGridTextColumn Header="Darslar soni" Width="140"
+                                Binding="{Binding EntryCountText, DataType=vm:ScheduleRowViewModel}" />
+            <DataGridTextColumn Header="Yaratilgan" Width="130"
+                                Binding="{Binding CreatedAtText, DataType=vm:ScheduleRowViewModel}" />
+            <DataGridTemplateColumn Header="Holati" Width="110">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:ScheduleRowViewModel">
+                  <Border Margin="0,6"
+                          Padding="10,3"
+                          CornerRadius="10"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource AppSuccessBrush}"
+                          IsVisible="{Binding IsActive}">
+                    <TextBlock Text="Faol"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="White" />
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+
+      <!-- Jadval shakli -->
+      <Border Grid.Row="3"
+              Margin="0,12,0,0"
+              Padding="16"
+              CornerRadius="8"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              IsVisible="{Binding IsScheduleEditing}">
+        <StackPanel>
+          <TextBlock Text="{Binding ScheduleEditorTitle}"
+                     FontSize="15"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppTextBrush}" />
+
+          <TextBox Text="{Binding EditScheduleName}"
+                   Watermark="Jadval nomi (masalan: Asosiy jadval)"
+                   Margin="0,12,0,0" />
+
+          <StackPanel Orientation="Horizontal" Margin="0,14,0,0" HorizontalAlignment="Right">
+            <Button Content="Bekor qilish"
+                    Command="{Binding CancelScheduleEditCommand}"
+                    IsEnabled="{Binding IsNotBusy}" />
+            <Button Content="Saqlash"
+                    Command="{Binding SaveScheduleCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Margin="10,0,0,0"
+                    Padding="18,6" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

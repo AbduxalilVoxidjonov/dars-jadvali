@@ -1,0 +1,261 @@
+<UserControl x:Class="DarsJadvali.UI.Views.TimetableView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:DarsJadvali.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:TimetableViewModel}">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="TimetableCellTemplate" DataType="{x:Type vm:TimetableCellViewModel}">
+            <Border MinHeight="66" Margin="2" CornerRadius="5" Padding="6">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background"
+                                Value="{Binding ColorCode, Converter={StaticResource ColorCodeToBrush}, ConverterParameter=Light}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource AppBorderBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource AppHeaderBrush}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource AppSelectionBrush}" />
+                                <Setter Property="BorderThickness" Value="3" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}" />
+                </Border.InputBindings>
+
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="O'chirish"
+                                  Command="{Binding DeleteCommand}"
+                                  IsEnabled="{Binding HasEntry}" />
+                    </ContextMenu>
+                </Border.ContextMenu>
+
+                <Grid>
+                    <!-- Sarlavha katagi -->
+                    <StackPanel VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="{Binding IsHeader, Converter={StaticResource BooleanToVisibility}}">
+                        <TextBlock Text="{Binding HeaderText}"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                        <TextBlock Text="{Binding HeaderSubText}"
+                                   FontSize="10"
+                                   Foreground="{StaticResource AppMutedTextBrush}"
+                                   HorizontalAlignment="Center"
+                                   Visibility="{Binding HeaderSubText, Converter={StaticResource EmptyStringToVisibility}}" />
+                    </StackPanel>
+
+                    <!-- Dars katagi -->
+                    <StackPanel VerticalAlignment="Center"
+                                Visibility="{Binding IsHeader, Converter={StaticResource BooleanToVisibility}, ConverterParameter=Invert}">
+                        <TextBlock Text="{Binding SubjectName}"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding PersonName}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource AppMutedTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding RoomText, StringFormat='Xona: {0}'}"
+                                   FontSize="10"
+                                   Foreground="{StaticResource AppMutedTextBrush}"
+                                   Visibility="{Binding RoomText, Converter={StaticResource EmptyStringToVisibility}}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ConflictTemplate">
+            <Border Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}, ConverterParameter=Background}"
+                    CornerRadius="4"
+                    Padding="8,6"
+                    Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="4"
+                            CornerRadius="2"
+                            Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}"
+                            Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Message}"
+                               TextWrapping="Wrap"
+                               MaxWidth="280"
+                               Foreground="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                   Text="Dars jadvali" Style="{StaticResource AppPageTitle}" />
+
+        <!-- Yuqori panel: rejim va filtr -->
+        <Border Grid.Row="1" Grid.Column="0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="14,10"
+                Margin="0,0,0,12">
+            <WrapPanel VerticalAlignment="Center">
+                <RadioButton Content="Sinf bo'yicha"
+                             GroupName="TimetableMode"
+                             IsChecked="{Binding IsClassMode, Mode=TwoWay}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,16,0" />
+                <RadioButton Content="O'qituvchi bo'yicha"
+                             GroupName="TimetableMode"
+                             IsChecked="{Binding IsTeacherMode, Mode=TwoWay}"
+                             VerticalAlignment="Center"
+                             Margin="0,0,20,0" />
+
+                <ComboBox ItemsSource="{Binding ClassGroups}"
+                          SelectedItem="{Binding FilterClassGroup, Mode=TwoWay}"
+                          DisplayMemberPath="Name"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Sinf"
+                          Width="180"
+                          Margin="0,0,12,0"
+                          Visibility="{Binding IsClassMode, Converter={StaticResource BooleanToVisibility}}" />
+
+                <ComboBox ItemsSource="{Binding Teachers}"
+                          SelectedItem="{Binding FilterTeacher, Mode=TwoWay}"
+                          DisplayMemberPath="FullName"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="O'qituvchi"
+                          Width="220"
+                          Margin="0,0,12,0"
+                          Visibility="{Binding IsTeacherMode, Converter={StaticResource BooleanToVisibility}}" />
+
+                <Button Content="Yangilash"
+                        Command="{Binding RefreshGridCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Margin="0,0,8,0" />
+
+                <Button Content="Jadvalni tozalash"
+                        Command="{Binding ClearScheduleCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Foreground="{StaticResource AppErrorBrush}"
+                        Padding="14,2" />
+            </WrapPanel>
+        </Border>
+
+        <!-- To'r -->
+        <Border Grid.Row="2" Grid.Column="0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Cells}"
+                              ItemTemplate="{StaticResource TimetableCellTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding GridColumnCount}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- O'ng panel: joylashtirish -->
+        <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+                Width="340"
+                Margin="16,0,0,0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Dars qo'yish" Style="{StaticResource AppSectionTitle}" />
+
+                    <Border Background="#F3F0FA" CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Tanlangan katak:" FontSize="11" Foreground="{StaticResource AppMutedTextBrush}" />
+                            <TextBlock Text="{Binding SelectedCellText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <ComboBox ItemsSource="{Binding ClassGroups}"
+                              SelectedItem="{Binding PlaceClassGroup, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Sinf"
+                              Margin="0,0,0,14" />
+
+                    <ComboBox ItemsSource="{Binding Subjects}"
+                              SelectedItem="{Binding PlaceSubject, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Fan"
+                              Margin="0,0,0,14" />
+
+                    <ComboBox ItemsSource="{Binding Teachers}"
+                              SelectedItem="{Binding PlaceTeacher, Mode=TwoWay}"
+                              DisplayMemberPath="FullName"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="O'qituvchi"
+                              Margin="0,0,0,14" />
+
+                    <TextBox Text="{Binding PlaceRoom, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Xona (ixtiyoriy)"
+                             Margin="0,0,0,14" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Qo'yish"
+                                Command="{Binding PlaceCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Padding="28,5" />
+                        <Button Content="Katakni bo'shatish"
+                                Command="{Binding DeleteSelectedCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Foreground="{StaticResource AppErrorBrush}"
+                                Margin="10,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding PlacementSummary}"
+                               Margin="0,14,0,0"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlacementSummary, Converter={StaticResource EmptyStringToVisibility}}" />
+
+                    <ItemsControl ItemsSource="{Binding PlacementConflicts}"
+                                  ItemTemplate="{StaticResource ConflictTemplate}"
+                                  Margin="0,10,0,0" />
+
+                    <TextBlock Style="{StaticResource AppHintText}"
+                               Margin="0,16,0,0"
+                               Text="Maslahat: katakni sichqonchaning chap tugmasi bilan tanlang, o'ng tugma bilan bosib darsni o'chiring." />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,17 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:themes="clr-namespace:Material.Styles.Themes;assembly=Material.Styles"
+             xmlns:local="clr-namespace:DarsJadvali.Desktop"
+             x:Class="DarsJadvali.Desktop.App"
+             RequestedThemeVariant="Light">
+
+  <Application.DataTemplates>
+    <local:ViewLocator />
+  </Application.DataTemplates>
+
+  <Application.Styles>
+    <themes:MaterialTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Teal" />
+    <StyleInclude Source="avares://Material.Avalonia.DataGrid/MaterialDataGridStyles.axaml" />
+    <StyleInclude Source="avares://DarsJadvali/Styles/AppStyles.axaml" />
+  </Application.Styles>
+</Application>

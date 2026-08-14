@@ -1,0 +1,89 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters">
+
+  <Styles.Resources>
+
+    <!-- ============ Ranglar (WPF App.xaml dagi kalitlar bilan bir xil) ============ -->
+    <SolidColorBrush x:Key="AppSurfaceBrush"    Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F4F5F7" />
+    <SolidColorBrush x:Key="AppBorderBrush"     Color="#E0E0E0" />
+    <SolidColorBrush x:Key="AppHeaderBrush"     Color="#EDE7F6" />
+    <SolidColorBrush x:Key="AppTextBrush"       Color="#212121" />
+    <SolidColorBrush x:Key="AppMutedTextBrush"  Color="#757575" />
+    <SolidColorBrush x:Key="AppErrorBrush"      Color="#C62828" />
+    <SolidColorBrush x:Key="AppWarningBrush"    Color="#EF6C00" />
+    <SolidColorBrush x:Key="AppSuccessBrush"    Color="#2E7D32" />
+    <SolidColorBrush x:Key="AppSelectionBrush"  Color="#1565C0" />
+    <SolidColorBrush x:Key="AppMenuBrush"       Color="#3C2F63" />
+
+    <!-- ============ Konverterlar ============ -->
+    <conv:InverseBooleanConverter          x:Key="InverseBoolean" />
+    <conv:NotNullToBooleanConverter        x:Key="NotNullToBoolean" />
+    <conv:StringNotEmptyConverter          x:Key="StringNotEmpty" />
+    <conv:ColorCodeToBrushConverter        x:Key="ColorCodeToBrush" />
+    <conv:WeekDayToUzbekConverter          x:Key="WeekDayToUzbek" />
+    <conv:ConflictSeverityToBrushConverter x:Key="ConflictSeverityToBrush" />
+
+    <!-- ============ Matn uslublari ============ -->
+    <!-- Ishlatish: Theme="{StaticResource AppPageTitle}"  yoki  Classes="AppPageTitle" -->
+    <ControlTheme x:Key="AppPageTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="#212121" />
+      <Setter Property="Margin" Value="0,0,0,12" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="AppSectionTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="#212121" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </ControlTheme>
+
+    <ControlTheme x:Key="AppHintText" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#757575" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </ControlTheme>
+
+  </Styles.Resources>
+
+  <!-- Xuddi shu uslublar sinf (Classes) orqali ham ishlaydi -->
+  <Style Selector="TextBlock.AppPageTitle">
+    <Setter Property="FontSize" Value="22" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="#212121" />
+    <Setter Property="Margin" Value="0,0,0,12" />
+  </Style>
+
+  <Style Selector="TextBlock.AppSectionTitle">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="#212121" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+
+  <Style Selector="TextBlock.AppHintText">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="#757575" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Xato matni -->
+  <Style Selector="TextBlock.AppErrorText">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="#C62828" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Sahifa ichidagi karta (panel) -->
+  <Style Selector="Border.AppCard">
+    <Setter Property="Background" Value="#FFFFFF" />
+    <Setter Property="BorderBrush" Value="#E0E0E0" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+</Styles>

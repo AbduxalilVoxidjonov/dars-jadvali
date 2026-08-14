@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DarsJadvali.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(PkgEfCore)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="$(PkgEfCore)">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- 8.0.2: EF Core 8.0.11 tranzitiv ravishda 8.0.2 talab qiladi (NU1605 downgrade xatosi). -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <!-- PDF eksport. MIT litsenziya, hech qanday daromad/foydalanish sharti yo'q. -->
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- O'zbek lotin harflari (oʻ, gʻ, ʼ) uchun shrift PDF ichiga o'rnatiladi:
+         macOS/Windows/Linux da natija bir xil bo'ladi. DejaVu — cheklovsiz litsenziya. -->
+    <EmbeddedResource Include="Export\Fonts\DejaVuSansCondensed.ttf" />
+    <EmbeddedResource Include="Export\Fonts\DejaVuSansCondensed-Bold.ttf" />
+    <None Include="Export\Fonts\LICENSE-DejaVu.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DarsJadvali.Application\DarsJadvali.Application.csproj" />
+  </ItemGroup>
+
+</Project>

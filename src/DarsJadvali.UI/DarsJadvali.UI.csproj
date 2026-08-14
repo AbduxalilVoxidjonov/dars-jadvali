@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>DarsJadvali.UI</RootNamespace>
+    <AssemblyName>DarsJadvali</AssemblyName>
+    <ApplicationIcon></ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Oddiy `net8.0-windows` (TargetPlatformVersion 7.0) — Windows 10 va 11 da,
+         x86 va x64 da ishlaydi. `SupportedOSPlatformVersion` ni ko'tarish uchun
+         TFM ni `net8.0-windows10.0.x` ga o'zgartirish kerak bo'lardi; bunga ehtiyoj yo'q. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="$(PkgExtensions)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(PkgEfCore)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DarsJadvali.Application\DarsJadvali.Application.csproj" />
+    <ProjectReference Include="..\DarsJadvali.Infrastructure\DarsJadvali.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

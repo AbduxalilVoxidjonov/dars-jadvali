@@ -1,0 +1,226 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             x:Class="DarsJadvali.Desktop.Views.AboutView"
+             x:DataType="vm:AboutViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+    <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+
+      <TextBlock Text="Dastur haqida"
+                 Classes="AppPageTitle" />
+
+      <!-- Umumiy ma'lumot -->
+      <Border Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="22"
+              Margin="0,0,0,16">
+        <StackPanel>
+          <TextBlock Text="{Binding AppName}" FontSize="22" FontWeight="Bold" />
+          <TextBlock Text="{Binding VersionText}"
+                     Classes="AppHintText" />
+
+          <TextBlock Text="{Binding Description}"
+                     TextWrapping="Wrap"
+                     FontSize="14"
+                     Margin="0,16,0,0" />
+
+          <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto" Margin="0,18,0,0">
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="Muallif:"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       Margin="0,0,0,8" />
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                       Text="{Binding Author}"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Telegram:"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       VerticalAlignment="Center" />
+            <Button Grid.Row="1" Grid.Column="1"
+                    Command="{Binding OpenTelegramCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="8,4"
+                    Background="Transparent"
+                    Cursor="Hand"
+                    ToolTip.Tip="{Binding TelegramUrl}">
+              <TextBlock Text="{Binding TelegramHandle}"
+                         FontWeight="SemiBold"
+                         TextDecorations="Underline" />
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Yangilanish -->
+      <Border Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="22"
+              Margin="0,0,0,16">
+        <StackPanel>
+          <TextBlock Text="Yangilanish"
+                     Classes="AppSectionTitle" />
+
+          <!-- Tekshirilmoqda -->
+          <StackPanel Orientation="Horizontal"
+                      IsVisible="{Binding IsCheckingUpdate}"
+                      Margin="0,10,0,0">
+            <TextBlock Text="Yangilanish tekshirilmoqda..."
+                       Classes="AppHintText"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+
+          <!-- Yangi versiya bor -->
+          <Border IsVisible="{Binding HasUpdate}"
+                  Background="#E8F5E9"
+                  BorderBrush="#A5D6A7"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Padding="18"
+                  Margin="0,12,0,0">
+            <StackPanel>
+              <TextBlock Text="{Binding UpdateMessage}"
+                         FontSize="15"
+                         FontWeight="Bold"
+                         Foreground="#1B5E20"
+                         TextWrapping="Wrap" />
+
+              <SelectableTextBlock Text="{Binding ReleaseNotes}"
+                                   IsVisible="{Binding HasReleaseNotes}"
+                                   FontSize="12"
+                                   Foreground="#33691E"
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0" />
+
+              <Button Content="Yuklab olish"
+                      Command="{Binding DownloadUpdateCommand}"
+                      HorizontalAlignment="Left"
+                      Padding="22,7"
+                      Margin="0,14,0,0" />
+            </StackPanel>
+          </Border>
+
+          <!-- Eng so'nggi versiya -->
+          <TextBlock Text="{Binding UpdateMessage}"
+                     IsVisible="{Binding IsUpToDate}"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppSuccessBrush}"
+                     TextWrapping="Wrap"
+                     Margin="0,12,0,0" />
+
+          <!-- Reliz yo'q yoki tekshirib bo'lmadi — bezovta qilmaydigan izoh -->
+          <TextBlock Text="{Binding UpdateMessage}"
+                     IsVisible="{Binding HasUpdateNote}"
+                     Classes="AppHintText"
+                     Margin="0,12,0,0" />
+
+          <Button Content="Tekshirish"
+                  Command="{Binding CheckUpdateCommand}"
+                  HorizontalAlignment="Left"
+                  Padding="16,6"
+                  Margin="0,14,0,0" />
+
+          <TextBlock Text="{Binding RepositoryUrl}"
+                     Classes="AppHintText"
+                     Margin="0,10,0,0" />
+        </StackPanel>
+      </Border>
+
+      <!-- Hissa qo'shish -->
+      <Border Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="22"
+              Margin="0,0,0,16">
+        <StackPanel>
+          <TextBlock Text="Loyihani rivojlantirishga hissa qo'shish"
+                     Classes="AppSectionTitle" />
+
+          <TextBlock Text="Dastur bepul tarqatiladi. Agar u sizga foydali bo'lgan bo'lsa, quyidagi karta orqali muallifni qo'llab-quvvatlashingiz mumkin."
+                     TextWrapping="Wrap"
+                     Classes="AppHintText"
+                     Margin="0,10,0,0" />
+
+          <Border Background="#F5F1FB"
+                  BorderBrush="#D6C9F0"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Padding="20"
+                  Margin="0,16,0,0"
+                  HorizontalAlignment="Left">
+            <StackPanel>
+              <TextBlock Text="{Binding DonateCardType}"
+                         FontWeight="Bold"
+                         FontSize="15"
+                         Foreground="#4527A0" />
+
+              <SelectableTextBlock Text="{Binding DonateCardNumber}"
+                                   FontFamily="Menlo,Consolas,Courier New,monospace"
+                                   FontSize="28"
+                                   FontWeight="Bold"
+                                   Foreground="#1A1A1A"
+                                   Margin="0,12,0,0" />
+
+              <TextBlock Text="{Binding DonateCardHolder}"
+                         Classes="AppHintText"
+                         Margin="0,6,0,0" />
+
+              <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                <Button Content="Nusxa olish"
+                        Command="{Binding CopyCardNumberCommand}"
+                        Padding="20,7" />
+
+                <TextBlock Text="{Binding CopyFeedback}"
+                           IsVisible="{Binding HasCopyFeedback}"
+                           FontWeight="SemiBold"
+                           Foreground="#2E7D32"
+                           VerticalAlignment="Center"
+                           Margin="14,0,0,0" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <!-- Ma'lumotlar bazasi -->
+      <Border Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="22"
+              Margin="0,0,0,24">
+        <StackPanel>
+          <TextBlock Text="Ma'lumotlar bazasi"
+                     Classes="AppSectionTitle" />
+
+          <TextBlock Text="Barcha ma'lumotlar quyidagi faylda saqlanadi. Zaxira nusxa olish uchun shu faylni ko'chirib qo'ying."
+                     TextWrapping="Wrap"
+                     Classes="AppHintText"
+                     Margin="0,10,0,0" />
+
+          <SelectableTextBlock Text="{Binding DatabasePath}"
+                               FontFamily="Menlo,Consolas,Courier New,monospace"
+                               FontSize="13"
+                               TextWrapping="Wrap"
+                               Margin="0,10,0,0" />
+
+          <Button Content="Yo'lni nusxalash"
+                  Command="{Binding CopyDatabasePathCommand}"
+                  HorizontalAlignment="Left"
+                  Padding="16,6"
+                  Margin="0,12,0,0" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="{Binding StatusMessage}"
+                 Classes="AppHintText" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

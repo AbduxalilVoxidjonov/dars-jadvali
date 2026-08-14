@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dars Jadvali Tuzuvchi</title>
+<style>
+/* ===================== Asosiy uslublar ===================== */
+:root{
+  --bg:#f4f6fa; --panel:#ffffff; --side:#16233a; --side-2:#1f3050;
+  --text:#1c2536; --muted:#6b7891; --line:#e2e7f0;
+  --primary:#1976d2; --primary-d:#125aa3;
+  --danger:#d32f2f; --warn:#ed9c00; --ok:#2e7d32;
+  --radius:10px; --shadow:0 2px 10px rgba(16,32,64,.08);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* ===================== Karkas ===================== */
+.layout{display:flex;min-height:100vh}
+.sidebar{
+  width:236px;flex:0 0 236px;background:var(--side);color:#dce5f3;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+}
+.brand{padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand h1{margin:0;font-size:15px;font-weight:700;letter-spacing:.2px;color:#fff}
+.brand small{color:#8ea3c4;font-size:11px}
+.nav{padding:10px 8px;overflow-y:auto;flex:1}
+.nav a{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;margin:2px 0;border-radius:8px;
+  color:#c3d1e6;text-decoration:none;cursor:pointer;font-size:13.5px;
+}
+.nav a:hover{background:var(--side-2);color:#fff}
+.nav a.active{background:var(--primary);color:#fff;font-weight:600}
+.nav .ico{width:18px;text-align:center;font-size:15px}
+.side-foot{padding:12px 16px;font-size:11px;color:#7f92b1;border-top:1px solid rgba(255,255,255,.08)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  background:var(--panel);border-bottom:1px solid var(--line);padding:14px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.topbar h2{margin:0;font-size:17px;font-weight:650;white-space:nowrap}
+/* O'quv yili + dars jadvali tanlagichi (topbar o'ng tomonida) */
+.setbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.setbar .fld{width:170px}
+.setbar .fld.wide{width:230px}
+.setbar label.fl{margin-bottom:2px}
+.setbar select{padding:6px 8px}
+.setbar .btn{margin-bottom:1px}
+@media(max-width:700px){.setbar .fld,.setbar .fld.wide{width:140px}}
+.content{padding:20px 22px 40px;flex:1}
+.page{display:none}
+.page.active{display:block}
+
+/* ===================== Elementlar ===================== */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+.card h3{margin:0 0 12px;font-size:14px;font-weight:650}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grow{flex:1;min-width:160px}
+label.fl{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=number],input[type=time],select{
+  width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;outline:none;
+}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(25,118,210,.12)}
+input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--primary)}
+
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid transparent;
+  border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-weight:600;font-size:13px;
+}
+.btn:hover{background:var(--primary-d)}
+.btn.ghost{background:#fff;color:var(--text);border-color:var(--line)}
+.btn.ghost:hover{background:#f1f4f9}
+.btn.danger{background:var(--danger)}
+.btn.danger:hover{background:#a92222}
+.btn.warn{background:var(--warn);color:#33260a}
+.btn.sm{padding:5px 9px;font-size:12px;border-radius:7px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+tbody tr:hover{background:#f8fafd}
+.tbl-wrap{overflow-x:auto}
+
+/* O'qituvchi vaqti — kunlar × dars soatlari to'ri */
+.av-h{text-align:center;width:56px}
+.av-h .num{display:block;font-size:14px;font-weight:700;color:var(--text)}
+.av-h .tm{display:block;font-size:10px;font-weight:500;color:var(--muted);letter-spacing:0;text-transform:none}
+.av-cell{text-align:center;width:56px}
+.av-cell input{cursor:pointer}
+.av-off .av-cell{background:#f7f8fb}
+.av-off .av-cell input{cursor:not-allowed;opacity:.4}
+.av-note{color:var(--muted);font-size:12.5px;font-style:italic}
+.av-chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;font-size:12.5px}
+
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:6px;border:1px solid rgba(0,0,0,.12)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600}
+.badge.on{background:#e6f4ea;color:var(--ok)}
+.badge.off{background:#fdeaea;color:var(--danger)}
+.muted{color:var(--muted)}
+.empty{padding:26px;text-align:center;color:var(--muted)}
+
+/* Statistik kartalar */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.stat .n{font-size:26px;font-weight:700;line-height:1.2}
+.stat .l{font-size:12px;color:var(--muted)}
+
+/* Konflikt ro'yxati */
+.conf{border-left:4px solid var(--line);background:#fafbfd;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:13px}
+.conf.Error{border-left-color:var(--danger);background:#fdf3f3}
+.conf.Warning{border-left-color:var(--warn);background:#fff8e9}
+.conf .code{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(14,22,40,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:480px;max-height:88vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.modal header{padding:15px 18px;border-bottom:1px solid var(--line);font-weight:650}
+.modal .body{padding:16px 18px}
+.modal footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.field{margin-bottom:12px}
+
+/* Toast */
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:80}
+.toast{padding:11px 15px;border-radius:9px;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.22);max-width:380px;font-size:13px}
+.toast.ok{background:#2e7d32}.toast.err{background:#d32f2f}.toast.info{background:#37474f}
+
+/* Jadval to'ri */
+.grid-wrap{overflow:auto}
+table.grid{border-collapse:separate;border-spacing:0;min-width:720px}
+table.grid th,table.grid td{border:1px solid var(--line);padding:4px}
+table.grid thead th{background:#eef2f8;text-align:center;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0}
+table.grid td.hour,table.grid th.hour{background:#f7f9fc;text-align:center;width:74px;font-size:12px}
+table.grid td{height:64px;vertical-align:top}
+.cell-empty{width:100%;height:100%;min-height:56px;border:1px dashed #cfd8e6;border-radius:7px;background:transparent;cursor:pointer;color:#b7c1d2;font-size:18px}
+.cell-empty:hover{background:#eef4fc;border-color:var(--primary);color:var(--primary)}
+.cell-off{min-height:56px;display:flex;align-items:center;justify-content:center;color:#c5cddb;background:repeating-linear-gradient(45deg,#f7f8fb,#f7f8fb 6px,#eef1f6 6px,#eef1f6 12px);border-radius:7px;font-size:11px}
+.lesson{position:relative;border-radius:7px;padding:6px 8px;color:#fff;min-height:56px;font-size:12px;line-height:1.35}
+.lesson b{display:block;font-size:12.5px}
+.lesson .sub{opacity:.9;font-size:11.5px}
+.lesson .x{position:absolute;top:3px;right:4px;background:rgba(0,0,0,.22);border:0;color:#fff;border-radius:5px;cursor:pointer;padding:1px 6px;font-size:12px;line-height:1.4}
+.lesson .x:hover{background:rgba(0,0,0,.45)}
+
+/* Bosh sahifa — butun maktab jadvali (yagona jadval, faqat ko'rish) */
+.school-wrap{max-height:calc(100vh - 260px);min-height:280px;overflow:auto}
+table.grid.school{min-width:820px}
+table.grid.school thead th{position:sticky;top:0;z-index:3;background:#eef2f8}
+/* Diqqat: `left` ofsetlari ustun kengliklariga bog'liq, shuning uchun `max-width` va
+   `overflow-wrap` bilan ustunlarning kengayib ketishi to'silgan — aks holda uzun sinf
+   nomi ustunni kengaytirib, yopishgan (sticky) ustunlar bir-biriga siljib qolardi. */
+table.grid.school th.cls-col,table.grid.school td.cls-col{width:126px;min-width:126px;max-width:126px;left:0;overflow-wrap:anywhere}
+table.grid.school th.hour,table.grid.school td.hour{width:96px;min-width:96px;max-width:96px;left:126px;overflow-wrap:anywhere}
+table.grid.school thead th.cls-col,table.grid.school thead th.hour{z-index:5}
+table.grid.school td.cls-col,table.grid.school td.hour{position:sticky;z-index:2}
+table.grid.school td.cls-col{vertical-align:middle;text-align:center;background:#fff}
+table.grid.school td.hour{background:#f7f9fc}
+table.grid.school tr.alt td{background:#f9fbfd}
+table.grid.school tr.alt td.cls-col{background:#f3f7fc}
+table.grid.school tr.alt td.hour{background:#eff4fa}
+table.grid.school tr.grp-start td{border-top:3px solid #c3cfe2}
+.cls-name{font-size:14px;font-weight:700;line-height:1.25}
+.cls-col .btn{margin-top:6px}
+.lesson.soft{color:var(--text);border:1px solid var(--line);border-left-width:4px}
+.lesson.soft .sub{display:block;opacity:1;color:var(--muted)}
+.cell-blank{min-height:56px;border-radius:7px;background:rgba(0,0,0,.02)}
+.print-title{display:none}
+
+.about-card{max-width:640px}
+.card-num{font-size:30px;font-weight:700;letter-spacing:2px;font-family:ui-monospace,Menlo,Consolas,monospace;margin:6px 0 12px}
+a.link{color:var(--primary);font-weight:600;text-decoration:none}
+a.link:hover{text-decoration:underline}
+hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+
+@media(max-width:820px){
+  .sidebar{width:64px;flex:0 0 64px}
+  .brand h1,.brand small,.nav a span.txt,.side-foot{display:none}
+  .nav a{justify-content:center}
+}
+
+/* ===================== Chop etish ===================== */
+@media print{
+  @page{size:landscape;margin:10mm}
+  html,body{height:auto;background:#fff}
+  .layout{display:block;min-height:0}
+  .sidebar,.topbar,#toasts,.overlay,.no-print{display:none !important}
+  .main{display:block}
+  .content{padding:0}
+  .page{display:none !important}
+  .page.active{display:block !important}
+  #homeStats{display:none !important}
+  #page-home > .card{display:none !important}
+  #page-home > #homeScheduleCard{display:block !important;border:0;box-shadow:none;padding:0;margin:0}
+  .print-title{display:block;font-size:16px;font-weight:700;margin:0 0 12px}
+  .grid-wrap,.school-wrap{overflow:visible !important;max-height:none !important;min-height:0 !important}
+  table.grid{min-width:0;width:100%}
+  table.grid.school{min-width:0}
+  table.grid td{height:auto}
+  table.grid.school thead th,table.grid.school td.cls-col,table.grid.school td.hour{position:static}
+  table.grid.school tbody tr{page-break-inside:avoid;break-inside:avoid}
+  .lesson,.lesson.soft,.cell-blank,.cell-off,table.grid thead th,table.grid td.hour,
+  table.grid.school tr.alt td,table.grid.school td.cls-col{
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Dars Jadvali</h1>
+      <small>localhost test rejimi</small>
+    </div>
+    <nav class="nav" id="nav">
+      <a data-page="home"        class="active"><i class="ico">🏠</i><span class="txt">Bosh sahifa</span></a>
+      <a data-page="teachers"><i class="ico">👨‍🏫</i><span class="txt">O'qituvchilar</span></a>
+      <a data-page="subjects"><i class="ico">📚</i><span class="txt">Fanlar</span></a>
+      <a data-page="classes"><i class="ico">🏫</i><span class="txt">Sinflar</span></a>
+      <a data-page="assignments"><i class="ico">🔗</i><span class="txt">Biriktirmalar</span></a>
+      <a data-page="workdays"><i class="ico">📅</i><span class="txt">Hafta kunlari</span></a>
+      <a data-page="availability"><i class="ico">⏰</i><span class="txt">O'qituvchi vaqti</span></a>
+      <a data-page="schedule"><i class="ico">🗓️</i><span class="txt">Dars jadvali</span></a>
+      <a data-page="about"><i class="ico">ℹ️</i><span class="txt">Dastur haqida</span></a>
+    </nav>
+    <div class="side-foot">v1.0.0 · Abduxalil Voxidjonov</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="pageTitle">Bosh sahifa</h2>
+      <div class="setbar" id="setBar">
+        <div class="fld">
+          <label class="fl" for="selYear">O'quv yili</label>
+          <select id="selYear"></select>
+        </div>
+        <div class="fld wide">
+          <label class="fl" for="selSchedule">Dars jadvali</label>
+          <select id="selSchedule"></select>
+        </div>
+        <button class="btn ghost sm" id="btnSets" title="Jadvallarni boshqarish">⚙️ Boshqarish</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- ============ BOSH SAHIFA ============ -->
+      <section class="page active" id="page-home">
+        <div class="stats" id="homeStats"></div>
+        <div class="card">
+          <h3>Amallar</h3>
+          <div class="row">
+            <button class="btn" id="btnGenerate">⚙️ Avtomatik tuzish</button>
+            <button class="btn ghost" id="btnValidate">✔️ Jadvalni tekshirish</button>
+            <button class="btn danger" id="btnClearAll">🗑️ Jadvalni tozalash</button>
+          </div>
+          <p class="muted" style="margin:10px 0 0">
+            «Avtomatik tuzish» mavjud biriktirmalar asosida jadvalni to'ldiradi (eski jadval o'chiriladi).
+          </p>
+        </div>
+        <div class="card" id="homeResultCard" style="display:none">
+          <h3 id="homeResultTitle">Natija</h3>
+          <div id="homeResult"></div>
+        </div>
+
+        <div class="card" id="homeScheduleCard">
+          <div class="row no-print" style="justify-content:space-between;margin-bottom:12px">
+            <h3 style="margin:0">Maktab jadvali</h3>
+            <div class="row" style="gap:8px">
+              <div style="width:210px">
+                <select id="homeSchClass"><option value="">Barcha sinflar</option></select>
+              </div>
+              <button class="btn ghost" id="btnHomeSchPrint">🖨️ Chop etish</button>
+              <button class="btn ghost" id="btnHomeSchPdf">📄 PDF yuklab olish</button>
+            </div>
+          </div>
+          <div class="print-title">Maktab dars jadvali</div>
+          <div id="homeSchedule"><div class="empty">Yuklanmoqda…</div></div>
+        </div>
+      </section>
+
+      <!-- ============ O'QITUVCHILAR ============ -->
+      <section class="page" id="page-teachers">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">O'qituvchilar ro'yxati</h3>
+            <button class="btn" id="btnAddTeacher">➕ Qo'shish</button>
+          </div>
+          <div class="tbl-wrap"><table id="tblTeachers"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ FANLAR ============ -->
+      <section class="page" id="page-subjects">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Fanlar ro'yxati</h3>
+            <button class="btn" id="btnAddSubject">➕ Qo'shish</button>
+          </div>
+          <div class="tbl-wrap"><table id="tblSubjects"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ SINFLAR ============ -->
+      <section class="page" id="page-classes">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Sinflar ro'yxati</h3>
+            <button class="btn" id="btnAddClass">➕ Qo'shish</button>
+          </div>
+          <div class="tbl-wrap"><table id="tblClasses"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ BIRIKTIRMALAR ============ -->
+      <section class="page" id="page-assignments">
+        <div class="card">
+          <h3>Yangi biriktirma</h3>
+          <div class="row">
+            <div class="grow"><label class="fl">O'qituvchi</label><select id="asgTeacher"></select></div>
+            <div class="grow"><label class="fl">Fan</label><select id="asgSubject"></select></div>
+            <div class="grow"><label class="fl">Sinf</label><select id="asgClass"></select></div>
+            <div style="width:130px"><label class="fl">Haftalik soat</label><input type="number" id="asgHours" min="1" max="40" value="2"></div>
+            <button class="btn" id="btnAddAssignment">➕ Qo'shish</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Biriktirmalar</h3>
+            <div style="width:240px"><select id="asgFilterTeacher"></select></div>
+          </div>
+          <div class="tbl-wrap"><table id="tblAssignments"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ HAFTA KUNLARI ============ -->
+      <section class="page" id="page-workdays">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Ish kunlari</h3>
+            <button class="btn" id="btnSaveWorkDays">💾 Saqlash</button>
+          </div>
+          <div class="tbl-wrap"><table id="tblWorkDays"></table></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:10px">
+            <h3 style="margin:0">Dars soatlari vaqti</h3>
+            <div class="row" style="gap:8px">
+              <button class="btn ghost" id="btnAddSlot">➕ Soat qo'shish</button>
+              <button class="btn" id="btnSaveSlots">💾 Saqlash</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table id="tblSlots"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ O'QITUVCHI VAQTI ============ -->
+      <section class="page" id="page-availability">
+        <div class="card">
+          <div class="row">
+            <div class="grow"><label class="fl">O'qituvchi</label><select id="avTeacher"></select></div>
+            <button class="btn ghost" id="btnAvCancel">↩️ Bekor qilish</button>
+            <button class="btn" id="btnSaveAv">💾 Saqlash</button>
+          </div>
+          <p class="muted" style="margin:10px 0 0" id="avHint">
+            «Cheklov bor» belgilanmagan kunda o'qituvchi barcha soatlarda dars o'ta oladi.
+            Belgilangan kunda esa FAQAT tanlangan soatlarda dars o'ta oladi — qolgan soatlarga
+            jadval tuzishda dars qo'yilmaydi.
+          </p>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap"><table id="tblAvail"></table></div>
+        </div>
+      </section>
+
+      <!-- ============ DARS JADVALI ============ -->
+      <section class="page" id="page-schedule">
+        <div class="card">
+          <div class="row">
+            <div style="width:180px">
+              <label class="fl">Filtr turi</label>
+              <select id="schMode">
+                <option value="class">Sinf bo'yicha</option>
+                <option value="teacher">O'qituvchi bo'yicha</option>
+              </select>
+            </div>
+            <div class="grow"><label class="fl" id="schTargetLabel">Sinf</label><select id="schTarget"></select></div>
+            <button class="btn ghost" id="btnSchReload">🔄 Yangilash</button>
+            <button class="btn ghost" id="btnSchPdf">📄 PDF yuklab olish</button>
+            <button class="btn danger" id="btnSchClear">🗑️ Shu jadvalni tozalash</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="grid-wrap" id="scheduleGrid"></div>
+        </div>
+      </section>
+
+      <!-- ============ DASTUR HAQIDA ============ -->
+      <section class="page" id="page-about">
+        <div class="card about-card" id="aboutCard"><div class="empty">Yuklanmoqda…</div></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+
+<script>
+/* =====================================================================
+   DarsJadvali — bitta faylli veb UI (vanilla JS, tashqi kutubxonasiz)
+   ===================================================================== */
+
+const DAYS = ["Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba","Yakshanba"];
+
+const state = {
+  teachers: [], subjects: [], classes: [], assignments: [],
+  workdays: [], slots: [],
+  schedule: [],
+  avDays: [], avTeacherId: null,   // o'qituvchi vaqti: dars soati bo'yicha kunlar ro'yxati
+  homeSchedule: [], homeSchClassId: "",   // bosh sahifadagi jadval (to'liq, filtrlanmagan)
+  years: [], sets: [],                    // o'quv yillari va dars jadvali variantlari
+  yearId: null, scheduleId: null,         // tanlangan yil va faol jadval
+  page: "home"
+};
+
+/* ---------------------- Yordamchilar ---------------------- */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function api(path, options = {}) {
+  const opts = Object.assign({ headers: { "Content-Type": "application/json" } }, options);
+  if (opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
+
+  let res;
+  try {
+    res = await fetch("/api" + path, opts);
+  } catch (e) {
+    throw new Error("Serverga ulanib bo'lmadi. Dastur ishlab turibdimi?");
+  }
+  if (res.status === 204) return null;
+
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* JSON emas */ }
+
+  if (!res.ok) throw new Error((data && data.error) || ("Xatolik yuz berdi (" + res.status + ")"));
+  return data;
+}
+
+function toast(message, kind = "ok") {
+  const el = document.createElement("div");
+  el.className = "toast " + kind;
+  el.textContent = message;
+  $("#toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+const fail = e => toast(e && e.message ? e.message : "Noma'lum xatolik", "err");
+
+function confirmAsk(text) { return window.confirm(text); }
+
+/* ---------------------- Modal ---------------------- */
+function closeModal() { $("#overlay").classList.remove("open"); $("#modal").innerHTML = ""; }
+$("#overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/**
+ * fields: [{key,label,type:'text|number|color|checkbox|select|time',options:[{value,label}],min,max}]
+ */
+function openForm(title, fields, values, onSave, saveLabel = "Saqlash") {
+  const html = fields.map(f => {
+    const v = values[f.key];
+    if (f.type === "checkbox")
+      return `<div class="field"><label class="fl">${esc(f.label)}</label>
+        <input type="checkbox" data-k="${f.key}" ${v ? "checked" : ""}></div>`;
+    if (f.type === "select")
+      return `<div class="field"><label class="fl">${esc(f.label)}</label>
+        <select data-k="${f.key}">${f.options.map(o =>
+          `<option value="${esc(o.value)}" ${String(o.value) === String(v) ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select></div>`;
+    if (f.type === "color")
+      return `<div class="field"><label class="fl">${esc(f.label)}</label>
+        <input type="color" data-k="${f.key}" value="${esc(v || "#1976d2")}"></div>`;
+    const t = f.type === "number" ? "number" : (f.type === "time" ? "time" : "text");
+    const extra = (f.min !== undefined ? ` min="${f.min}"` : "") + (f.max !== undefined ? ` max="${f.max}"` : "");
+    return `<div class="field"><label class="fl">${esc(f.label)}</label>
+      <input type="${t}" data-k="${f.key}" value="${esc(v ?? "")}"${extra}></div>`;
+  }).join("");
+
+  $("#modal").innerHTML = `
+    <header>${esc(title)}</header>
+    <div class="body">${html}<div id="modalMsg"></div></div>
+    <footer>
+      <button class="btn ghost" data-act="cancel">Bekor qilish</button>
+      <button class="btn" data-act="save">${esc(saveLabel)}</button>
+    </footer>`;
+  $("#overlay").classList.add("open");
+
+  $('#modal [data-act="cancel"]').onclick = closeModal;
+  $('#modal [data-act="save"]').onclick = async () => {
+    const out = Object.assign({}, values);
+    $$("#modal [data-k]").forEach(el => {
+      const key = el.dataset.k;
+      const f = fields.find(x => x.key === key);
+      out[key] = f.type === "checkbox" ? el.checked
+              : f.type === "number"   ? Number(el.value || 0)
+              : el.value;
+    });
+    try { await onSave(out); } catch (e) { fail(e); }
+  };
+}
+
+/* Konflikt ro'yxatini HTML ga aylantiradi */
+function conflictsHtml(validation) {
+  if (!validation || !validation.conflicts || !validation.conflicts.length)
+    return `<p class="muted">Konflikt topilmadi.</p>`;
+  return validation.conflicts.map(c =>
+    `<div class="conf ${esc(c.severity)}">
+       <div class="code">${c.severity === "Error" ? "XATO" : "OGOHLANTIRISH"} · ${esc(c.code)}</div>
+       ${esc(c.message)}
+     </div>`).join("");
+}
+
+/* ---------------------- Navigatsiya ---------------------- */
+const PAGE_TITLES = {
+  home:"Bosh sahifa", teachers:"O'qituvchilar", subjects:"Fanlar", classes:"Sinflar",
+  assignments:"Biriktirmalar", workdays:"Hafta kunlari", availability:"O'qituvchi vaqti",
+  schedule:"Dars jadvali", about:"Dastur haqida"
+};
+
+$("#nav").addEventListener("click", e => {
+  const a = e.target.closest("a[data-page]");
+  if (a) go(a.dataset.page);
+});
+
+async function go(page) {
+  state.page = page;
+  $$("#nav a").forEach(a => a.classList.toggle("active", a.dataset.page === page));
+  $$(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
+  $("#pageTitle").textContent = PAGE_TITLES[page] || "";
+  location.hash = page;
+  try { await loadPage(page); } catch (e) { fail(e); }
+}
+
+async function loadPage(page) {
+  switch (page) {
+    case "home":         return renderHome();
+    case "teachers":     return renderTeachers();
+    case "subjects":     return renderSubjects();
+    case "classes":      return renderClasses();
+    case "assignments":  return renderAssignments();
+    case "workdays":     return renderWorkDays();
+    case "availability": return renderAvailability();
+    case "schedule":     return renderSchedulePage();
+    case "about":        return renderAbout();
+  }
+}
+
+/* ---------------------- Ma'lumot yuklash ---------------------- */
+async function loadTeachers()  { state.teachers  = await api("/teachers"); }
+async function loadSubjects()  { state.subjects  = await api("/subjects"); }
+async function loadClasses()   { state.classes   = await api("/classgroups"); }
+async function loadAssignments(){ state.assignments = await api("/assignments"); }
+async function loadWorkDays()  { state.workdays  = await api("/workdays"); }
+async function loadSlots()     { state.slots     = await api("/lessonslots"); }
+
+/* ===================== O'QUV YILI va DARS JADVALI VARIANTLARI =====================
+   Serverda bir vaqtda FAQAT BITTA jadval faol bo'ladi; qolgan barcha so'rovlar
+   (/schedule, /assignments, ... ) o'sha faol jadval bilan ishlaydi. Shuning uchun
+   jadval almashtirilganda sahifadagi ma'lumot to'liq qayta yuklanadi.
+   =============================================================================== */
+
+/** O'quv yillari + jadvallar ro'yxatini oladi va tanlagichni chizadi. */
+async function loadSets() {
+  const [years, sets] = await Promise.all([api("/academicyears"), api("/schedules")]);
+  state.years = years || [];
+  state.sets  = sets  || [];
+
+  const active = state.sets.find(s => s.isActive) || state.sets[0] || null;
+  state.scheduleId = active ? active.id : null;
+  state.yearId = active ? active.academicYearId : (state.years[0] ? state.years[0].id : null);
+  renderSetBar();
+}
+
+/** Faqat jadvallar ro'yxatini yangilaydi (dars sonini yangilash uchun). Xatosi sahifani buzmaydi. */
+async function refreshSetBar() {
+  try {
+    state.sets = await api("/schedules") || [];
+    const active = state.sets.find(s => s.isActive);
+    if (active) { state.scheduleId = active.id; state.yearId = active.academicYearId; }
+    renderSetBar();
+  } catch { /* tanlagich eskirgan holda qoladi — sahifa baribir ishlaydi */ }
+}
+
+function renderSetBar() {
+  const ySel = $("#selYear"), sSel = $("#selSchedule");
+
+  ySel.innerHTML = state.years.length
+    ? state.years.map(y => `<option value="${y.id}">${esc(y.name)}</option>`).join("")
+    : `<option value="">— o'quv yili yo'q —</option>`;
+  if (state.yearId && state.years.some(y => y.id === state.yearId)) ySel.value = String(state.yearId);
+
+  const list = setsOfYear(state.yearId);
+  sSel.innerHTML = list.length
+    ? list.map(s => `<option value="${s.id}">${esc(s.name)} · ${s.entryCount} dars</option>`).join("")
+    : `<option value="">— jadval yo'q —</option>`;
+  if (state.scheduleId && list.some(s => s.id === state.scheduleId)) sSel.value = String(state.scheduleId);
+}
+
+function setsOfYear(yearId) {
+  return state.sets.filter(s => String(s.academicYearId) === String(yearId));
+}
+
+/** Jadvalni serverda faol qiladi va joriy sahifani qayta yuklaydi. */
+async function activateSchedule(id) {
+  await api("/schedules/" + id + "/activate", { method: "POST" });
+  await loadSets();
+  await loadPage(state.page);
+}
+
+$("#selYear").onchange = async () => {
+  state.yearId = +$("#selYear").value || null;
+  const list = setsOfYear(state.yearId);
+  if (!list.length) {
+    state.scheduleId = null;
+    renderSetBar();
+    return toast("Bu o'quv yilida jadval yo'q. «Boshqarish» orqali yangi jadval qo'shing.", "info");
+  }
+  try { await activateSchedule(list[0].id); toast("Jadval almashtirildi: " + list[0].name); }
+  catch (e) { fail(e); }
+};
+
+$("#selSchedule").onchange = async () => {
+  const id = +$("#selSchedule").value || 0;
+  if (!id) return;
+  try {
+    await activateSchedule(id);
+    const s = state.sets.find(x => x.id === id);
+    toast("Jadval almashtirildi: " + (s ? s.name : id));
+  } catch (e) { fail(e); }
+};
+
+/* ---- Boshqarish oynasi: jadval qo'shish / nusxalash / nomini o'zgartirish / o'chirish ---- */
+$("#btnSets").onclick = () => openSetManager();
+
+function openSetManager() {
+  const year = state.years.find(y => y.id === state.yearId) || null;
+  const list = setsOfYear(state.yearId);
+
+  const rows = list.map(s => `
+    <tr>
+      <td>
+        <b>${esc(s.name)}</b>
+        ${s.isActive ? `<span class="badge on" style="margin-left:6px">Faol</span>` : ""}
+        <div class="muted">${s.entryCount} ta dars</div>
+      </td>
+      <td style="text-align:right;white-space:nowrap">
+        ${s.isActive ? "" : `<button class="btn ghost sm" data-use="${s.id}" title="Faol qilish">▶️</button>`}
+        <button class="btn ghost sm" data-copy="${s.id}" title="Nusxalash">⧉</button>
+        <button class="btn ghost sm" data-ren="${s.id}" title="Nomini o'zgartirish">✏️</button>
+        <button class="btn danger sm" data-del="${s.id}" title="O'chirish">🗑️</button>
+      </td>
+    </tr>`).join("");
+
+  $("#modal").innerHTML = `
+    <header>Dars jadvallarini boshqarish</header>
+    <div class="body">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <div><span class="muted">O'quv yili:</span> <b>${esc(year ? year.name : "—")}</b></div>
+        <div class="row" style="gap:6px">
+          <button class="btn ghost sm" data-year-add="1">➕ Yil</button>
+          <button class="btn ghost sm" data-year-ren="1">✏️ Yil</button>
+          <button class="btn danger sm" data-year-del="1">🗑️ Yil</button>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>${list.length
+        ? `<tbody>${rows}</tbody>`
+        : `<tbody><tr><td class="empty">Bu o'quv yilida jadval yo'q.</td></tr></tbody>`}</table></div>
+      <div style="margin-top:12px"><button class="btn" data-set-add="1">➕ Yangi jadval</button></div>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">
+        Eski o'quv yillari saqlanib qoladi. Har bir yil ichida bir nechta jadval bo'lishi mumkin;
+        ularning ichidagi darslar bir-biriga aralashmaydi.
+      </p>
+    </div>
+    <footer><button class="btn ghost" data-act="close">Yopish</button></footer>`;
+  $("#overlay").classList.add("open");
+
+  $('#modal [data-act="close"]').onclick = closeModal;
+
+  $$("#modal [data-use]").forEach(b => b.onclick = () => runSetAction(async () => {
+    await api("/schedules/" + b.dataset.use + "/activate", { method: "POST" });
+    toast("Jadval faol qilindi");
+  }));
+
+  $$("#modal [data-copy]").forEach(b => b.onclick = () => {
+    const s = state.sets.find(x => x.id === +b.dataset.copy);
+    openForm("Jadvalni nusxalash", [
+      { key: "name", label: "Yangi jadval nomi (bo'sh qoldirsangiz avtomatik tanlanadi)", type: "text" }
+    ], { name: s ? s.name + " (nusxa)" : "" }, async v => {
+      await api("/schedules/" + s.id + "/duplicate", { method: "POST", body: { name: v.name || null } });
+      toast("Jadval nusxalandi (darslari bilan)");
+      await afterSetChange();
+    }, "Nusxalash");
+  });
+
+  $$("#modal [data-ren]").forEach(b => b.onclick = () => {
+    const s = state.sets.find(x => x.id === +b.dataset.ren);
+    openForm("Jadval nomini o'zgartirish", [
+      { key: "name", label: "Jadval nomi", type: "text" }
+    ], { name: s ? s.name : "" }, async v => {
+      if (!String(v.name || "").trim()) return toast("Nom bo'sh bo'lmasligi kerak", "err");
+      await api("/schedules/" + s.id, { method: "PUT", body: { name: v.name } });
+      toast("Nom saqlandi");
+      await afterSetChange();
+    });
+  });
+
+  $$("#modal [data-del]").forEach(b => b.onclick = () => {
+    const s = state.sets.find(x => x.id === +b.dataset.del);
+    if (!confirmAsk(`«${s ? s.name : ""}» jadvali va uning barcha darslari o'chiriladi. Davom etamizmi?`)) return;
+    runSetAction(async () => {
+      await api("/schedules/" + s.id, { method: "DELETE" });
+      toast("Jadval o'chirildi");
+    });
+  });
+
+  $$("#modal [data-set-add]").forEach(b => b.onclick = () => {
+    openForm("Yangi dars jadvali", [
+      { key: "name", label: "Jadval nomi (masalan: 2-variant)", type: "text" }
+    ], { name: "" }, async v => {
+      if (!String(v.name || "").trim()) return toast("Nom bo'sh bo'lmasligi kerak", "err");
+      await api("/schedules", { method: "POST", body: { academicYearId: state.yearId, name: v.name } });
+      toast("Jadval qo'shildi");
+      await afterSetChange();
+    }, "Qo'shish");
+  });
+
+  $$("#modal [data-year-add]").forEach(b => b.onclick = () => {
+    openForm("Yangi o'quv yili", [
+      { key: "name",      label: "O'quv yili nomi (masalan: 2026–2027)", type: "text" },
+      { key: "startYear", label: "Boshlanish yili", type: "number", min: 2000, max: 2100 },
+      { key: "note",      label: "Izoh (ixtiyoriy)", type: "text" }
+    ], { name: "", startYear: new Date().getFullYear(), note: "" }, async v => {
+      if (!String(v.name || "").trim()) return toast("Nom bo'sh bo'lmasligi kerak", "err");
+      const y = await api("/academicyears", { method: "POST", body: v });
+      // Yangi yil bo'sh bo'ladi — darhol birinchi jadval ham yaratiladi.
+      await api("/schedules", { method: "POST", body: { academicYearId: y.id, name: "Asosiy jadval" } });
+      toast("O'quv yili qo'shildi");
+      await afterSetChange(y.id);
+    }, "Qo'shish");
+  });
+
+  $$("#modal [data-year-ren]").forEach(b => b.onclick = () => {
+    if (!year) return toast("Avval o'quv yilini tanlang", "err");
+    openForm("O'quv yilini tahrirlash", [
+      { key: "name",      label: "Nomi", type: "text" },
+      { key: "startYear", label: "Boshlanish yili", type: "number", min: 2000, max: 2100 },
+      { key: "note",      label: "Izoh", type: "text" }
+    ], { name: year.name, startYear: year.startYear, note: year.note || "" }, async v => {
+      if (!String(v.name || "").trim()) return toast("Nom bo'sh bo'lmasligi kerak", "err");
+      await api("/academicyears/" + year.id, { method: "PUT", body: v });
+      toast("Saqlandi");
+      await afterSetChange(year.id);
+    });
+  });
+
+  $$("#modal [data-year-del]").forEach(b => b.onclick = () => {
+    if (!year) return toast("Avval o'quv yilini tanlang", "err");
+    if (!confirmAsk(`«${year.name}» o'quv yili, uning BARCHA jadvallari va darslari o'chiriladi. Davom etamizmi?`)) return;
+    runSetAction(async () => {
+      await api("/academicyears/" + year.id, { method: "DELETE" });
+      toast("O'quv yili o'chirildi");
+    });
+  });
+}
+
+/** Boshqarish oynasidagi amal: bajaradi, ma'lumotni qayta yuklaydi va oynani qayta ochadi. */
+function runSetAction(action) {
+  (async () => {
+    try { await action(); await afterSetChange(); }
+    catch (e) { fail(e); }
+  })();
+}
+
+/**
+ * Jadval/yil o'zgargandan keyin: ro'yxatni qayta oladi, joriy sahifani qayta chizadi
+ * va boshqarish oynasini yangilangan holda qayta ochadi.
+ */
+async function afterSetChange(preferYearId) {
+  closeModal();
+  await loadSets();
+  if (preferYearId && state.years.some(y => y.id === preferYearId)) {
+    state.yearId = preferYearId;
+    renderSetBar();
+  }
+  await loadPage(state.page);
+  openSetManager();
+}
+
+/* ===================== BOSH SAHIFA ===================== */
+async function renderHome() {
+  // Barcha ma'lumot bir marta, parallel yuklanadi (sinflar bo'ylab takroriy so'rov yo'q).
+  const results = await Promise.all([
+    loadTeachers(), loadSubjects(), loadClasses(), loadAssignments(),
+    loadWorkDays(), loadSlots(), api("/schedule")
+  ]);
+  state.schedule = results[6] || [];
+  state.homeSchedule = state.schedule;
+
+  const totalHours = state.assignments.reduce((s, a) => s + a.weeklyHoursCount, 0);
+  const cards = [
+    ["O'qituvchilar", state.teachers.length],
+    ["Fanlar", state.subjects.length],
+    ["Sinflar", state.classes.length],
+    ["Biriktirmalar", state.assignments.length],
+    ["Rejadagi soat", totalHours],
+    ["Qo'yilgan dars", state.schedule.length],
+    ["Ish kunlari", state.workdays.filter(d => d.isActive).length]
+  ];
+  $("#homeStats").innerHTML = cards.map(c =>
+    `<div class="stat"><div class="n">${c[1]}</div><div class="l">${esc(c[0])}</div></div>`).join("");
+
+  renderHomeSchedule();
+  await refreshSetBar();   // jadvaldagi dars soni tanlagichda ham yangilansin
+}
+
+/* ---- Bosh sahifa: butun maktab jadvali (faqat ko'rish) ---- */
+
+/** "#1976d2" ni tekshiradi; noto'g'ri bo'lsa standart rang qaytadi. */
+function normColor(hex) {
+  const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(String(hex || "").trim());
+  if (!m) return "#1976d2";
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return "#" + h.toLowerCase();
+}
+
+/** Katak foni uchun o'sha rangning ochiq toni. */
+function softBg(hex, alpha) {
+  const n = parseInt(normColor(hex).slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+function renderHomeSchedule() {
+  const box = $("#homeSchedule");
+  const sel = $("#homeSchClass");
+
+  // Sinf filtri (tanlov saqlanadi)
+  const prev = String(state.homeSchClassId || "");
+  sel.innerHTML = `<option value="">Barcha sinflar</option>` +
+    state.classes.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  if (prev && state.classes.some(c => String(c.id) === prev)) sel.value = prev;
+  else { state.homeSchClassId = ""; sel.value = ""; }
+
+  if (!state.classes.length) {
+    box.innerHTML = `<div class="empty">Sinflar yo'q. «Sinflar» bo'limidan sinf qo'shing.</div>`;
+    return;
+  }
+  const active = state.workdays.filter(d => d.isActive);
+  if (!active.length) {
+    box.innerHTML = `<div class="empty">Faol ish kunlari yo'q. «Hafta kunlari» bo'limiga kiring.</div>`;
+    return;
+  }
+  if (!state.homeSchedule.length) {
+    box.innerHTML = `<div class="empty">Hali birorta dars qo'yilmagan. «Dars jadvali» sahifasidan qo'lda qo'shing yoki yuqoridagi «Avtomatik tuzish» tugmasini bosing.</div>`;
+    return;
+  }
+
+  const maxLessons = Math.max(...active.map(d => d.maxLessonsPerDay));
+  const slotByNum = {};
+  state.slots.forEach(s => slotByNum[s.lessonNumber] = s);
+
+  // Darslar sinf bo'yicha guruhlanadi: classGroupId -> { "Kun|N": entry }
+  const byClass = {};
+  state.homeSchedule.forEach(e => {
+    if (!byClass[e.classGroupId]) byClass[e.classGroupId] = {};
+    byClass[e.classGroupId][e.dayName + "|" + e.lessonNumber] = e;
+  });
+
+  const shown = state.homeSchClassId
+    ? state.classes.filter(c => String(c.id) === String(state.homeSchClassId))
+    : state.classes;
+
+  // Yagona jadval: ustunlar — kunlar, qatorlar — sinf bo'yicha guruhlangan soatlar.
+  let html = `<div class="grid-wrap school-wrap"><table class="grid school"><thead><tr>
+      <th class="cls-col">Sinf</th><th class="hour">Soat</th>` +
+    active.map(d => `<th>${esc(d.dayName)}</th>`).join("") + `</tr></thead><tbody>`;
+
+  shown.forEach((c, ci) => {
+    const byKey = byClass[c.id] || {};
+    const alt = ci % 2 === 1 ? " alt" : "";
+
+    for (let n = 1; n <= maxLessons; n++) {
+      html += `<tr class="${n === 1 ? "grp-start" : ""}${alt}">`;
+
+      if (n === 1) {
+        html += `<td class="cls-col" rowspan="${maxLessons}">
+            <div class="cls-name">${esc(c.name)}</div>
+            ${c.roomNumber ? `<div class="muted">${esc(c.roomNumber)}-xona</div>` : ""}
+            <button class="btn ghost sm no-print" data-edit-class="${c.id}">✏️ Tahrirlash</button>
+          </td>`;
+      }
+
+      const slot = slotByNum[n];
+      html += `<td class="hour"><b>${n}-soat</b>` +
+        (slot ? `<div class="muted">${esc(slot.startTime)}–${esc(slot.endTime)}</div>` : "") + `</td>`;
+
+      for (const d of active) {
+        if (n > d.maxLessonsPerDay) { html += `<td><div class="cell-off">—</div></td>`; continue; }
+        const e = byKey[d.dayName + "|" + n];
+        if (!e) { html += `<td><div class="cell-blank"></div></td>`; continue; }
+        const col = normColor(e.teacherColor);
+        html += `<td><div class="lesson soft" style="background:${softBg(col, .16)};border-left-color:${col}">
+            <b>${esc(e.subjectName || "?")}</b>
+            <span class="sub">${esc(e.teacherName || "")}</span>
+            ${e.roomNumber ? `<span class="sub">🚪 ${esc(e.roomNumber)}-xona</span>` : ""}
+          </div></td>`;
+      }
+      html += `</tr>`;
+    }
+  });
+
+  box.innerHTML = html + `</tbody></table></div>`;
+
+  $$("#homeSchedule [data-edit-class]").forEach(b =>
+    b.onclick = () => openScheduleForClass(+b.dataset.editClass));
+}
+
+/** «Dars jadvali» sahifasini shu sinf tanlangan holda ochadi. */
+function openScheduleForClass(classId) {
+  const sel = $("#schTarget");
+  $("#schMode").value = "class";
+  // fillSelect mavjud tanlovni saqlaydi — shuning uchun avval qiymatni o'rnatamiz.
+  sel.innerHTML = `<option value="${classId}"></option>`;
+  sel.value = String(classId);
+  go("schedule");
+}
+
+$("#homeSchClass").onchange = () => {
+  state.homeSchClassId = $("#homeSchClass").value;
+  renderHomeSchedule();
+};
+$("#btnHomeSchPrint").onclick = () => window.print();
+
+/* ---- PDF yuklab olish (bosh sahifa va «Dars jadvali» sahifasi uchun umumiy) ----
+   Eng sodda va ishonchli yo'l: brauzerning o'zi yuklab olsin. Server
+   "Content-Disposition: attachment" qaytargani uchun sahifa almashmaydi. */
+function downloadSchedulePdf(classGroupId) {
+  const params = new URLSearchParams();
+  if (classGroupId) params.set("classGroupId", String(classGroupId));
+  const qs = params.toString();
+  toast("PDF tayyorlanmoqda…", "info");
+  window.location.href = "/api/schedule/pdf" + (qs ? "?" + qs : "");
+}
+
+$("#btnHomeSchPdf").onclick = () => downloadSchedulePdf(state.homeSchClassId);
+
+function showHomeResult(title, html) {
+  $("#homeResultTitle").textContent = title;
+  $("#homeResult").innerHTML = html;
+  $("#homeResultCard").style.display = "";
+}
+
+$("#btnGenerate").onclick = async () => {
+  if (!confirmAsk("Jadval avtomatik tuziladi va mavjud jadval o'chiriladi. Davom etamizmi?")) return;
+  const btn = $("#btnGenerate"); btn.disabled = true; btn.textContent = "⏳ Tuzilmoqda…";
+  try {
+    const r = await api("/schedule/generate", { method: "POST", body: { clearExisting: true } });
+    const msgs = (r.messages || []).map(m => `<div class="conf">${esc(m)}</div>`).join("");
+    showHomeResult("Avtomatik tuzish natijasi", `
+      <p><b>${r.success ? "✅ Muvaffaqiyatli" : "⚠️ Qisman bajarildi"}</b> —
+         qo'yildi: <b>${r.placedCount}</b>, qo'yilmadi: <b>${r.unplacedCount}</b>,
+         vaqt: ${(r.elapsedSeconds || 0).toFixed(2)} s</p>${msgs}`);
+    toast(`Jadval tuzildi: ${r.placedCount} ta dars qo'yildi`, r.success ? "ok" : "info");
+    await renderHome();
+  } catch (e) { fail(e); }
+  finally { btn.disabled = false; btn.textContent = "⚙️ Avtomatik tuzish"; }
+};
+
+$("#btnValidate").onclick = async () => {
+  try {
+    const v = await api("/schedule/validate");
+    showHomeResult("Tekshiruv natijasi",
+      (v.isValid ? `<p><b style="color:var(--ok)">✅ Jadvalda jiddiy xato yo'q.</b></p>`
+                 : `<p><b style="color:var(--danger)">❌ Jadvalda xatolar bor.</b></p>`) + conflictsHtml(v));
+    toast(v.isValid ? "Jadval tekshirildi: xato yo'q" : "Jadvalda xatolar topildi", v.isValid ? "ok" : "err");
+  } catch (e) { fail(e); }
+};
+
+$("#btnClearAll").onclick = async () => {
+  if (!confirmAsk("Butun dars jadvali o'chiriladi. Ishonchingiz komilmi?")) return;
+  try {
+    await api("/schedule", { method: "DELETE" });
+    toast("Jadval tozalandi");
+    await renderHome();
+  } catch (e) { fail(e); }
+};
+
+/* ===================== O'QITUVCHILAR ===================== */
+async function renderTeachers() {
+  await loadTeachers();
+  const rows = state.teachers.map(t => `
+    <tr>
+      <td><span class="dot" style="background:${esc(t.colorCode)}"></span>${esc(t.fullName)}</td>
+      <td>${esc(t.phone || "—")}</td>
+      <td><span class="badge ${t.isActive ? "on" : "off"}">${t.isActive ? "Faol" : "Nofaol"}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" data-edit="${t.id}">✏️</button>
+        <button class="btn danger sm" data-del="${t.id}">🗑️</button>
+      </td>
+    </tr>`).join("");
+
+  $("#tblTeachers").innerHTML = state.teachers.length
+    ? `<thead><tr><th>F.I.O.</th><th>Telefon</th><th>Holat</th><th></th></tr></thead><tbody>${rows}</tbody>`
+    : `<tbody><tr><td class="empty">O'qituvchilar yo'q. «Qo'shish» tugmasini bosing.</td></tr></tbody>`;
+
+  $$("#tblTeachers [data-edit]").forEach(b => b.onclick = () =>
+    teacherForm(state.teachers.find(x => x.id === +b.dataset.edit)));
+  $$("#tblTeachers [data-del]").forEach(b => b.onclick = async () => {
+    if (!confirmAsk("O'qituvchi va unga bog'liq barcha yozuvlar o'chiriladi. Davom etamizmi?")) return;
+    try { await api("/teachers/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); renderTeachers(); }
+    catch (e) { fail(e); }
+  });
+}
+
+function teacherForm(t) {
+  const isNew = !t;
+  const values = t || { id: 0, fullName: "", phone: "", colorCode: "#1976d2", isActive: true };
+  openForm(isNew ? "Yangi o'qituvchi" : "O'qituvchini tahrirlash", [
+    { key: "fullName", label: "F.I.O.", type: "text" },
+    { key: "phone",    label: "Telefon", type: "text" },
+    { key: "colorCode",label: "Rang (jadvalda ko'rinadi)", type: "color" },
+    { key: "isActive", label: "Faol", type: "checkbox" }
+  ], values, async v => {
+    if (!v.fullName.trim()) return toast("F.I.O. bo'sh bo'lmasligi kerak", "err");
+    if (isNew) await api("/teachers", { method: "POST", body: v });
+    else       await api("/teachers/" + v.id, { method: "PUT", body: v });
+    closeModal(); toast("Saqlandi"); renderTeachers();
+  });
+}
+$("#btnAddTeacher").onclick = () => teacherForm(null);
+
+/* ===================== FANLAR ===================== */
+async function renderSubjects() {
+  await loadSubjects();
+  const rows = state.subjects.map(s => `
+    <tr>
+      <td><span class="dot" style="background:${esc(s.colorCode)}"></span>${esc(s.name)}</td>
+      <td>${esc(s.code || "—")}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" data-edit="${s.id}">✏️</button>
+        <button class="btn danger sm" data-del="${s.id}">🗑️</button>
+      </td>
+    </tr>`).join("");
+
+  $("#tblSubjects").innerHTML = state.subjects.length
+    ? `<thead><tr><th>Nomi</th><th>Kodi</th><th></th></tr></thead><tbody>${rows}</tbody>`
+    : `<tbody><tr><td class="empty">Fanlar yo'q.</td></tr></tbody>`;
+
+  $$("#tblSubjects [data-edit]").forEach(b => b.onclick = () =>
+    subjectForm(state.subjects.find(x => x.id === +b.dataset.edit)));
+  $$("#tblSubjects [data-del]").forEach(b => b.onclick = async () => {
+    if (!confirmAsk("Fan va unga bog'liq yozuvlar o'chiriladi. Davom etamizmi?")) return;
+    try { await api("/subjects/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); renderSubjects(); }
+    catch (e) { fail(e); }
+  });
+}
+
+function subjectForm(s) {
+  const isNew = !s;
+  const values = s || { id: 0, name: "", code: "", colorCode: "#455a64" };
+  openForm(isNew ? "Yangi fan" : "Fanni tahrirlash", [
+    { key: "name",     label: "Fan nomi", type: "text" },
+    { key: "code",     label: "Qisqa kod (masalan: MAT)", type: "text" },
+    { key: "colorCode",label: "Rang", type: "color" }
+  ], values, async v => {
+    if (!v.name.trim()) return toast("Fan nomi bo'sh bo'lmasligi kerak", "err");
+    if (isNew) await api("/subjects", { method: "POST", body: v });
+    else       await api("/subjects/" + v.id, { method: "PUT", body: v });
+    closeModal(); toast("Saqlandi"); renderSubjects();
+  });
+}
+$("#btnAddSubject").onclick = () => subjectForm(null);
+
+/* ===================== SINFLAR ===================== */
+async function renderClasses() {
+  await loadClasses();
+  const rows = state.classes.map(c => `
+    <tr>
+      <td>${esc(c.name)}</td>
+      <td>${esc(c.roomNumber || "—")}</td>
+      <td>${c.studentCount}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" data-edit="${c.id}">✏️</button>
+        <button class="btn danger sm" data-del="${c.id}">🗑️</button>
+      </td>
+    </tr>`).join("");
+
+  $("#tblClasses").innerHTML = state.classes.length
+    ? `<thead><tr><th>Sinf</th><th>Xona</th><th>O'quvchi soni</th><th></th></tr></thead><tbody>${rows}</tbody>`
+    : `<tbody><tr><td class="empty">Sinflar yo'q.</td></tr></tbody>`;
+
+  $$("#tblClasses [data-edit]").forEach(b => b.onclick = () =>
+    classForm(state.classes.find(x => x.id === +b.dataset.edit)));
+  $$("#tblClasses [data-del]").forEach(b => b.onclick = async () => {
+    if (!confirmAsk("Sinf va unga bog'liq yozuvlar o'chiriladi. Davom etamizmi?")) return;
+    try { await api("/classgroups/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); renderClasses(); }
+    catch (e) { fail(e); }
+  });
+}
+
+function classForm(c) {
+  const isNew = !c;
+  const values = c || { id: 0, name: "", roomNumber: "", studentCount: 0 };
+  openForm(isNew ? "Yangi sinf" : "Sinfni tahrirlash", [
+    { key: "name",         label: "Sinf nomi (masalan: 5-A)", type: "text" },
+    { key: "roomNumber",   label: "Asosiy xona", type: "text" },
+    { key: "studentCount", label: "O'quvchilar soni", type: "number", min: 0 }
+  ], values, async v => {
+    if (!v.name.trim()) return toast("Sinf nomi bo'sh bo'lmasligi kerak", "err");
+    if (isNew) await api("/classgroups", { method: "POST", body: v });
+    else       await api("/classgroups/" + v.id, { method: "PUT", body: v });
+    closeModal(); toast("Saqlandi"); renderClasses();
+  });
+}
+$("#btnAddClass").onclick = () => classForm(null);
+
+/* ===================== BIRIKTIRMALAR ===================== */
+function fillSelect(el, items, valueKey, labelFn, placeholder) {
+  const cur = el.value;
+  el.innerHTML = (placeholder ? `<option value="">${esc(placeholder)}</option>` : "") +
+    items.map(i => `<option value="${i[valueKey]}">${esc(labelFn(i))}</option>`).join("");
+  if (cur && items.some(i => String(i[valueKey]) === cur)) el.value = cur;
+}
+
+async function renderAssignments() {
+  await Promise.all([loadTeachers(), loadSubjects(), loadClasses(), loadAssignments()]);
+
+  fillSelect($("#asgTeacher"), state.teachers, "id", t => t.fullName, "— o'qituvchi —");
+  fillSelect($("#asgSubject"), state.subjects, "id", s => s.name, "— fan —");
+  fillSelect($("#asgClass"),   state.classes,  "id", c => c.name, "— sinf —");
+  fillSelect($("#asgFilterTeacher"), state.teachers, "id", t => t.fullName, "Barcha o'qituvchilar");
+
+  const filterId = $("#asgFilterTeacher").value;
+  const list = filterId ? state.assignments.filter(a => a.teacherId === +filterId) : state.assignments;
+
+  // Har bir biriktirma uchun soat hisobi
+  const hours = await Promise.all(list.map(a =>
+    api("/assignments/" + a.id + "/hours").catch(() => ({ weekly: a.weeklyHoursCount, placed: 0, remaining: a.weeklyHoursCount }))));
+
+  const rows = list.map((a, i) => {
+    const h = hours[i];
+    const done = h.placed >= h.weekly;
+    return `<tr>
+      <td><span class="dot" style="background:${esc(a.teacherColor || "#888")}"></span>${esc(a.teacherName || "?")}</td>
+      <td>${esc(a.subjectName || "?")}</td>
+      <td>${esc(a.classGroupName || "?")}</td>
+      <td>${a.weeklyHoursCount}</td>
+      <td><b style="color:${done ? "var(--ok)" : "var(--warn)"}">${h.placed}/${h.weekly}</b> soat qo'yilgan</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" data-edit="${a.id}">✏️</button>
+        <button class="btn danger sm" data-del="${a.id}">🗑️</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  $("#tblAssignments").innerHTML = list.length
+    ? `<thead><tr><th>O'qituvchi</th><th>Fan</th><th>Sinf</th><th>Haftalik</th><th>Holat</th><th></th></tr></thead><tbody>${rows}</tbody>`
+    : `<tbody><tr><td class="empty">Biriktirmalar yo'q.</td></tr></tbody>`;
+
+  $$("#tblAssignments [data-edit]").forEach(b => b.onclick = () => {
+    const a = state.assignments.find(x => x.id === +b.dataset.edit);
+    openForm("Haftalik soatni o'zgartirish", [
+      { key: "weeklyHoursCount", label: "Haftalik soat", type: "number", min: 1, max: 40 }
+    ], a, async v => {
+      await api("/assignments/" + a.id, { method: "PUT", body: Object.assign({}, a, v) });
+      closeModal(); toast("Saqlandi"); renderAssignments();
+    });
+  });
+  $$("#tblAssignments [data-del]").forEach(b => b.onclick = async () => {
+    if (!confirmAsk("Biriktirma o'chirilsinmi?")) return;
+    try { await api("/assignments/" + b.dataset.del, { method: "DELETE" }); toast("O'chirildi"); renderAssignments(); }
+    catch (e) { fail(e); }
+  });
+}
+
+$("#asgFilterTeacher").onchange = () => renderAssignments().catch(fail);
+
+$("#btnAddAssignment").onclick = async () => {
+  const body = {
+    id: 0,
+    teacherId: +$("#asgTeacher").value || 0,
+    subjectId: +$("#asgSubject").value || 0,
+    classGroupId: +$("#asgClass").value || 0,
+    weeklyHoursCount: +$("#asgHours").value || 0
+  };
+  if (!body.teacherId || !body.subjectId || !body.classGroupId)
+    return toast("O'qituvchi, fan va sinfni tanlang", "err");
+  if (body.weeklyHoursCount < 1) return toast("Haftalik soat 0 dan katta bo'lsin", "err");
+
+  try { await api("/assignments", { method: "POST", body }); toast("Biriktirma qo'shildi"); renderAssignments(); }
+  catch (e) { fail(e); }
+};
+
+/* ===================== HAFTA KUNLARI ===================== */
+async function renderWorkDays() {
+  await Promise.all([loadWorkDays(), loadSlots()]);
+
+  const byDay = {};
+  state.workdays.forEach(d => byDay[d.dayOfWeek] = d);
+
+  $("#tblWorkDays").innerHTML =
+    `<thead><tr><th>Kun</th><th style="width:120px">Ish kunimi</th><th style="width:190px">Kunlik maksimal dars</th></tr></thead>
+     <tbody>${DAYS.map(day => {
+       const d = byDay[day] || { id: 0, dayOfWeek: day, isActive: false, maxLessonsPerDay: 7 };
+       return `<tr data-day="${day}">
+         <td><b>${day}</b></td>
+         <td><input type="checkbox" data-f="isActive" ${d.isActive ? "checked" : ""}></td>
+         <td><input type="number" data-f="max" min="1" max="12" value="${d.maxLessonsPerDay}"></td>
+       </tr>`;
+     }).join("")}</tbody>`;
+
+  renderSlotRows();
+}
+
+function renderSlotRows() {
+  const rows = state.slots.map(s => `
+    <tr data-slot="${s.lessonNumber}">
+      <td style="width:110px"><b>${s.lessonNumber}-dars</b></td>
+      <td style="width:150px"><input type="time" data-f="start" value="${esc(s.startTime)}"></td>
+      <td style="width:150px"><input type="time" data-f="end" value="${esc(s.endTime)}"></td>
+      <td style="text-align:right"><button class="btn danger sm" data-rm="${s.lessonNumber}">🗑️</button></td>
+    </tr>`).join("");
+
+  $("#tblSlots").innerHTML = state.slots.length
+    ? `<thead><tr><th>Dars</th><th>Boshlanishi</th><th>Tugashi</th><th></th></tr></thead><tbody>${rows}</tbody>`
+    : `<tbody><tr><td class="empty">Dars soatlari kiritilmagan.</td></tr></tbody>`;
+
+  $$("#tblSlots [data-rm]").forEach(b => b.onclick = () => {
+    collectSlots();
+    state.slots = state.slots.filter(s => s.lessonNumber !== +b.dataset.rm);
+    renderSlotRows();
+  });
+}
+
+/** "HH:mm" ga daqiqa qo'shadi; sutka chegarasidan oshsa 23:59 da to'xtaydi. */
+function addMinutes(hhmm, minutes) {
+  const [h, m] = String(hhmm || "08:00").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "08:45";
+  const total = Math.min(h * 60 + m + minutes, 23 * 60 + 59);
+  return String(Math.floor(total / 60)).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0");
+}
+
+function collectSlots() {
+  state.slots = $$("#tblSlots tr[data-slot]").map(tr => ({
+    id: 0,
+    lessonNumber: +tr.dataset.slot,
+    startTime: $('[data-f="start"]', tr).value || "08:00",
+    endTime:   $('[data-f="end"]',   tr).value || "08:45"
+  }));
+}
+
+$("#btnAddSlot").onclick = () => {
+  collectSlots();
+  const next = state.slots.length ? Math.max(...state.slots.map(s => s.lessonNumber)) + 1 : 1;
+  const last = state.slots[state.slots.length - 1];
+  // Yangi qator oxirgi darsning tugashidan boshlanadi va 45 daqiqa davom etadi.
+  const start = last ? last.endTime : "08:30";
+  state.slots.push({ id: 0, lessonNumber: next, startTime: start, endTime: addMinutes(start, 45) });
+  renderSlotRows();
+};
+
+$("#btnSaveSlots").onclick = async () => {
+  collectSlots();
+  try { state.slots = await api("/lessonslots", { method: "PUT", body: state.slots }); toast("Dars soatlari saqlandi"); renderSlotRows(); }
+  catch (e) { fail(e); }
+};
+
+$("#btnSaveWorkDays").onclick = async () => {
+  const byDay = {};
+  state.workdays.forEach(d => byDay[d.dayOfWeek] = d);
+  const body = $$("#tblWorkDays tr[data-day]").map(tr => {
+    const day = tr.dataset.day;
+    return {
+      id: byDay[day] ? byDay[day].id : 0,
+      dayOfWeek: day,
+      dayName: day,
+      isActive: $('[data-f="isActive"]', tr).checked,
+      maxLessonsPerDay: Math.max(1, +$('[data-f="max"]', tr).value || 1)
+    };
+  });
+  try { state.workdays = await api("/workdays", { method: "PUT", body }); toast("Hafta kunlari saqlandi"); }
+  catch (e) { fail(e); }
+};
+
+/* ===================== O'QITUVCHI VAQTI =====================
+   Vaqt (HH:mm) o'rniga DARS SOATI raqamlari bilan ishlaydi:
+   kunlar × dars soatlari katakchalar to'ri. Har kun uchun "Cheklov bor"
+   belgilanmagan bo'lsa — o'sha kuni o'qituvchi barcha soatlarda ishlaydi.
+   ============================================================ */
+async function renderAvailability() {
+  await Promise.all([loadTeachers(), loadWorkDays(), loadSlots()]);
+  fillSelect($("#avTeacher"), state.teachers, "id", t => t.fullName, state.teachers.length ? null : "— o'qituvchi yo'q —");
+
+  if (!state.teachers.length) {
+    state.avDays = [];
+    state.avTeacherId = null;
+    $("#tblAvail").innerHTML = `<tbody><tr><td class="empty">Avval o'qituvchi qo'shing.</td></tr></tbody>`;
+    return;
+  }
+  if (!state.avTeacherId || !state.teachers.some(t => t.id === state.avTeacherId))
+    state.avTeacherId = state.teachers[0].id;
+  $("#avTeacher").value = state.avTeacherId;
+
+  await loadAvDays();
+}
+
+/** Tanlangan o'qituvchining dars soati bo'yicha bandligini serverdan oladi. */
+async function loadAvDays() {
+  state.avDays = await api("/availability/" + state.avTeacherId + "/lessons") || [];
+  renderAvGrid();
+}
+
+/** Ustunlar soni = faol kunlarning eng katta maxLessonsPerDay i. */
+function avMaxLessons() {
+  const active = state.workdays.filter(d => d.isActive);
+  if (!active.length) return 0;
+  return Math.max(0, ...active.map(d => +d.maxLessonsPerDay || 0));
+}
+
+/** Dars soati raqami bo'yicha "08:30" ko'rinishidagi boshlanish vaqti. */
+function avSlotTime(n) {
+  const s = state.slots.find(x => x.lessonNumber === n);
+  return s ? s.startTime : "";
+}
+
+function renderAvGrid() {
+  const max = avMaxLessons();
+
+  if (!state.avDays.length || max < 1) {
+    $("#tblAvail").innerHTML =
+      `<tbody><tr><td class="empty">Faol ish kunlari yoki dars soatlari sozlanmagan — «Hafta kunlari» bo'limiga qarang.</td></tr></tbody>`;
+    return;
+  }
+
+  const nums = [];
+  for (let n = 1; n <= max; n++) nums.push(n);
+
+  const head = `<thead><tr>
+      <th style="width:130px">Cheklov</th>
+      <th style="width:120px">Kun</th>
+      ${nums.map(n => `<th class="av-h"><span class="num">${n}</span><span class="tm">${esc(avSlotTime(n))}</span></th>`).join("")}
+      <th></th>
+    </tr></thead>`;
+
+  const rows = state.avDays.map(d => {
+    const on = !!d.hasRestriction;
+    const allowed = d.allowedLessonNumbers || [];
+    const cells = nums.map(n => {
+      const checked = allowed.indexOf(n) >= 0 ? " checked" : "";
+      return `<td class="av-cell"><input type="checkbox" data-n="${n}"${checked}${on ? "" : " disabled"}></td>`;
+    }).join("");
+
+    const tail = on
+      ? `<td style="text-align:right;white-space:nowrap">
+           <button class="btn ghost sm" data-all="1">Hammasi</button>
+           <button class="btn ghost sm" data-none="1">Hech biri</button>
+         </td>`
+      : `<td class="av-note">cheklov yo'q — kun bo'yi ishlaydi</td>`;
+
+    return `<tr data-day="${esc(d.day)}" class="${on ? "" : "av-off"}">
+      <td><label class="av-chk"><input type="checkbox" data-f="restr"${on ? " checked" : ""}><span>Cheklov bor</span></label></td>
+      <td><b>${esc(d.dayName || d.day)}</b></td>
+      ${cells}
+      ${tail}
+    </tr>`;
+  }).join("");
+
+  $("#tblAvail").innerHTML = head + `<tbody>${rows}</tbody>`;
+
+  $$("#tblAvail tr[data-day]").forEach(tr => {
+    $('[data-f="restr"]', tr).onchange = () => { collectAvDays(); renderAvGrid(); };
+
+    const all = $("[data-all]", tr), none = $("[data-none]", tr);
+    if (all)  all.onclick  = () => { collectAvDays(); avSetDay(tr.dataset.day, nums); renderAvGrid(); };
+    if (none) none.onclick = () => { collectAvDays(); avSetDay(tr.dataset.day, []);   renderAvGrid(); };
+  });
+}
+
+/** Bitta kunning ruxsat etilgan soatlar ro'yxatini almashtiradi. */
+function avSetDay(day, numbers) {
+  const row = state.avDays.find(d => d.day === day);
+  if (row) row.allowedLessonNumbers = numbers.slice();
+}
+
+/** DOM dagi holatni state.avDays ga o'qib oladi (belgilangan soatlar o'chib ketmaydi). */
+function collectAvDays() {
+  const rows = $$("#tblAvail tr[data-day]");
+  if (!rows.length) return;
+  state.avDays = rows.map(tr => {
+    const prev = state.avDays.find(d => d.day === tr.dataset.day);
+    return {
+      day: tr.dataset.day,
+      dayName: prev ? prev.dayName : tr.dataset.day,
+      hasRestriction: $('[data-f="restr"]', tr).checked,
+      allowedLessonNumbers: $$("[data-n]", tr).filter(c => c.checked).map(c => +c.dataset.n)
+    };
+  });
+}
+
+$("#avTeacher").onchange = async () => {
+  state.avTeacherId = +$("#avTeacher").value;
+  try { await loadAvDays(); }
+  catch (e) { fail(e); }
+};
+
+$("#btnAvCancel").onclick = async () => {
+  if (!state.avTeacherId) return;
+  try { await loadAvDays(); toast("O'zgarishlar bekor qilindi", "info"); }
+  catch (e) { fail(e); }
+};
+
+$("#btnSaveAv").onclick = async () => {
+  if (!state.avTeacherId) return toast("Avval o'qituvchini tanlang", "err");
+  collectAvDays();
+  try {
+    state.avDays = await api("/availability/" + state.avTeacherId + "/lessons",
+      { method: "PUT", body: state.avDays }) || [];
+    toast("O'qituvchi vaqti saqlandi");
+    renderAvGrid();
+  } catch (e) { fail(e); }
+};
+
+/* ===================== DARS JADVALI ===================== */
+async function renderSchedulePage() {
+  await Promise.all([loadTeachers(), loadClasses(), loadSubjects(), loadAssignments(), loadWorkDays(), loadSlots()]);
+
+  const mode = $("#schMode").value;
+  $("#schTargetLabel").textContent = mode === "class" ? "Sinf" : "O'qituvchi";
+  const items = mode === "class" ? state.classes : state.teachers;
+  fillSelect($("#schTarget"), items, "id", i => mode === "class" ? i.name : i.fullName, items.length ? null : "— ro'yxat bo'sh —");
+
+  await reloadGrid();
+}
+
+async function reloadGrid() {
+  const mode = $("#schMode").value;
+  const targetId = +$("#schTarget").value || 0;
+
+  if (!targetId) {
+    $("#scheduleGrid").innerHTML = `<div class="empty">Avval ${mode === "class" ? "sinf" : "o'qituvchi"} qo'shing.</div>`;
+    return;
+  }
+  const query = mode === "class" ? "?classGroupId=" + targetId : "?teacherId=" + targetId;
+  state.schedule = await api("/schedule" + query);
+  drawGrid(mode, targetId);
+  await refreshSetBar();
+}
+
+function drawGrid(mode, targetId) {
+  const active = state.workdays.filter(d => d.isActive);
+  if (!active.length) {
+    $("#scheduleGrid").innerHTML = `<div class="empty">Faol ish kunlari yo'q. «Hafta kunlari» bo'limiga kiring.</div>`;
+    return;
+  }
+  const maxLessons = Math.max(...active.map(d => d.maxLessonsPerDay));
+  const slotByNum = {};
+  state.slots.forEach(s => slotByNum[s.lessonNumber] = s);
+
+  const byKey = {};
+  state.schedule.forEach(e => byKey[e.dayName + "|" + e.lessonNumber] = e);
+
+  let html = `<table class="grid"><thead><tr><th class="hour">Soat</th>` +
+    active.map(d => `<th>${esc(d.dayName)}</th>`).join("") + `</tr></thead><tbody>`;
+
+  for (let n = 1; n <= maxLessons; n++) {
+    const slot = slotByNum[n];
+    html += `<tr><td class="hour"><b>${n}</b>${slot ? `<div class="muted">${esc(slot.startTime)}<br>${esc(slot.endTime)}</div>` : ""}</td>`;
+    for (const d of active) {
+      if (n > d.maxLessonsPerDay) { html += `<td><div class="cell-off">—</div></td>`; continue; }
+      const e = byKey[d.dayName + "|" + n];
+      if (e) {
+        const color = (mode === "class" ? (e.teacherColor || "#1976d2") : (e.subjectColor || "#455a64"));
+        const second = mode === "class" ? (e.teacherName || "") : (e.classGroupName || "");
+        html += `<td><div class="lesson" style="background:${esc(color)}">
+            <button class="x" data-del="${e.id}" title="O'chirish">✕</button>
+            <b>${esc(e.subjectName || "?")}</b>
+            <span class="sub">${esc(second)}</span>
+            ${e.roomNumber ? `<span class="sub">🚪 ${esc(e.roomNumber)}</span>` : ""}
+          </div></td>`;
+      } else {
+        html += `<td><button class="cell-empty" data-add="${esc(d.dayName)}|${n}">＋</button></td>`;
+      }
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table>`;
+  $("#scheduleGrid").innerHTML = html;
+
+  $$("#scheduleGrid [data-del]").forEach(b => b.onclick = async () => {
+    try { await api("/schedule/" + b.dataset.del, { method: "DELETE" }); toast("Dars o'chirildi"); reloadGrid(); }
+    catch (e) { fail(e); }
+  });
+  $$("#scheduleGrid [data-add]").forEach(b => b.onclick = () => {
+    const [day, num] = b.dataset.add.split("|");
+    placeForm(mode, targetId, day, +num);
+  });
+}
+
+/** Bo'sh katakka dars qo'yish formasi */
+function placeForm(mode, targetId, day, lessonNumber) {
+  const list = mode === "class"
+    ? state.assignments.filter(a => a.classGroupId === targetId)
+    : state.assignments.filter(a => a.teacherId === targetId);
+
+  if (!list.length) {
+    return toast("Bu " + (mode === "class" ? "sinf" : "o'qituvchi") + " uchun biriktirma yo'q. Avval «Biriktirmalar» bo'limida qo'shing.", "err");
+  }
+
+  const options = list.map(a => ({
+    value: a.id,
+    label: mode === "class"
+      ? `${a.subjectName} — ${a.teacherName} (${a.weeklyHoursCount} soat)`
+      : `${a.subjectName} — ${a.classGroupName} (${a.weeklyHoursCount} soat)`
+  }));
+
+  const defaultRoom = mode === "class"
+    ? (state.classes.find(c => c.id === targetId)?.roomNumber || "")
+    : "";
+
+  openForm(`${day}, ${lessonNumber}-dars`, [
+    { key: "assignmentId", label: "Biriktirma (fan + o'qituvchi + sinf)", type: "select", options },
+    { key: "roomNumber",   label: "Xona (ixtiyoriy)", type: "text" }
+  ], { assignmentId: options[0].value, roomNumber: defaultRoom },
+  async v => {
+    const a = state.assignments.find(x => x.id === +v.assignmentId);
+    const draft = {
+      id: null,
+      classGroupId: a.classGroupId,
+      subjectId: a.subjectId,
+      teacherId: a.teacherId,
+      dayOfWeek: day,
+      lessonNumber: lessonNumber,
+      roomNumber: v.roomNumber || null
+    };
+    await submitPlacement(draft, false);
+  }, "Qo'yish");
+}
+
+/** PlaceAsync natijasini ko'rsatadi: xatolar qizil, ogohlantirishlar sariq. */
+async function submitPlacement(draft, force) {
+  let result;
+  try { result = await api("/schedule/place?force=" + (force ? "true" : "false"), { method: "POST", body: draft }); }
+  catch (e) { return fail(e); }
+
+  if (result.placed) {
+    closeModal();
+    toast(result.validation.hasWarnings ? "Qo'yildi (ogohlantirishlar bilan)" : "Dars qo'yildi",
+          result.validation.hasWarnings ? "info" : "ok");
+    return reloadGrid();
+  }
+
+  const hasError = result.validation.conflicts.some(c => c.severity === "Error");
+  const msg = $("#modalMsg");
+  const html = `<hr class="sep"><p><b style="color:${hasError ? "var(--danger)" : "var(--warn)"}">
+      ${hasError ? "Dars qo'yilmadi — quyidagi xatolar bor:" : "Ogohlantirishlar mavjud:"}</b></p>`
+    + conflictsHtml(result.validation);
+
+  if (msg) {
+    msg.innerHTML = html;
+    if (!hasError) {
+      const btn = document.createElement("button");
+      btn.className = "btn warn";
+      btn.textContent = "⚠️ Baribir qo'yish";
+      btn.onclick = () => submitPlacement(draft, true);
+      msg.appendChild(btn);
+    }
+  } else {
+    toast(result.validation.displayText || "Dars qo'yilmadi", "err");
+  }
+}
+
+$("#schMode").onchange = () => renderSchedulePage().catch(fail);
+$("#schTarget").onchange = () => reloadGrid().catch(fail);
+$("#btnSchReload").onclick = () => reloadGrid().catch(fail);
+$("#btnSchPdf").onclick = () => {
+  // PDF sinflar kesimida chiziladi: sinf rejimida tanlangan sinf, aks holda barcha sinflar.
+  if ($("#schMode").value === "class") {
+    downloadSchedulePdf(+$("#schTarget").value || "");
+  } else {
+    toast("PDF sinflar bo'yicha tuziladi — barcha sinflar yuklanadi", "info");
+    downloadSchedulePdf("");
+  }
+};
+$("#btnSchClear").onclick = async () => {
+  const mode = $("#schMode").value;
+  const targetId = +$("#schTarget").value || 0;
+  if (mode !== "class") return toast("Tozalash faqat sinf bo'yicha ishlaydi. Bosh sahifada butun jadvalni tozalash mumkin.", "info");
+  if (!targetId) return;
+  if (!confirmAsk("Shu sinf jadvali to'liq o'chiriladi. Davom etamizmi?")) return;
+  try { await api("/schedule?classGroupId=" + targetId, { method: "DELETE" }); toast("Tozalandi"); reloadGrid(); }
+  catch (e) { fail(e); }
+};
+
+/* ===================== DASTUR HAQIDA ===================== */
+async function renderAbout() {
+  const a = await api("/about");
+  $("#aboutCard").innerHTML = `
+    <h3 style="font-size:18px">${esc(a.appName)} <span class="muted">v${esc(a.version)}</span></h3>
+    <p>${esc(a.description)}</p>
+    <hr class="sep">
+    <p><b>Muallif:</b> ${esc(a.author)}</p>
+    <p><b>Telegram:</b>
+      <a class="link" href="${esc(a.telegramUrl)}" target="_blank" rel="noopener noreferrer">${esc(a.telegramHandle)}</a>
+    </p>
+    <hr class="sep">
+    <p class="muted">Muallifni qo'llab-quvvatlash — ${esc(a.donateCardType)} karta:</p>
+    <div class="card-num" id="cardNum">${esc(a.donateCardNumber)}</div>
+    <p class="muted" style="margin-top:-6px">${esc(a.donateCardHolder)}</p>
+    <button class="btn" id="btnCopyCard">📋 Nusxa olish</button>
+    <hr class="sep">
+    <p class="muted" style="font-size:12px">
+      Bu veb interfeys — WPF dasturi bilan bir xil biznes-mantiqni ishlatadigan test qobig'i.<br>
+      Baza fayli: <code>${esc(a.dbPath)}</code>
+    </p>`;
+
+  $("#btnCopyCard").onclick = async () => {
+    const text = a.donateCardNumber;
+    try {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); ta.remove();
+      }
+      toast("Karta raqami nusxalandi");
+    } catch { toast("Nusxa olib bo'lmadi — raqamni qo'lda belgilang", "err"); }
+  };
+}
+
+/* ===================== Ishga tushirish ===================== */
+(async function boot() {
+  // Avval o'quv yili / jadval tanlagichi to'ldiriladi — sahifa qaysi jadval
+  // ma'lumotini ko'rsatayotgani darhol ko'rinib tursin.
+  try { await loadSets(); } catch (e) { fail(e); }
+  const page = (location.hash || "#home").slice(1);
+  await go(page in PAGE_TITLES ? page : "home");
+})();
+</script>
+</body>
+</html>

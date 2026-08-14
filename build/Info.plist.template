@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Dars Jadvali Tuzuvchi — macOS .app bundle uchun Info.plist SHABLONI.
+
+  Bu fayl to'g'ridan-to'g'ri ishlatilmaydi. `build/publish-macos.sh` uni o'qib,
+  quyidagi joy egallovchilarni (placeholder) almashtiradi:
+
+    __VERSION__    -> Directory.Build.props dagi <Version> qiymati (masalan 1.0.0)
+    __ICON_KEY__   -> ikonka topilsa <key>CFBundleIconFile</key>... bloki,
+                      topilmasa bo'sh qator
+
+  Versiyani o'zgartirish uchun `Directory.Build.props` dagi <Version> ni tahrirlang —
+  bu yerga qo'lda yozish SHART EMAS.
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>DarsJadvali</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Dars Jadvali Tuzuvchi</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>uz.abduxalilvoxidjonov.darsjadvali</string>
+
+    <key>CFBundleExecutable</key>
+    <string>DarsJadvali</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.education</string>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Abduxalil Voxidjonov</string>
+__ICON_KEY__
+</dict>
+</plist>

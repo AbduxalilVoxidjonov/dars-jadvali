@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DarsJadvali.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DarsJadvali.Application\DarsJadvali.Application.csproj" />
+    <ProjectReference Include="..\DarsJadvali.Infrastructure\DarsJadvali.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

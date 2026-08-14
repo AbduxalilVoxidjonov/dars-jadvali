@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DarsJadvali.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 8.0.2: EF Core 8.0.11 / Hosting 8.0.1 tranzitiv talabi bilan mos kelishi uchun. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DarsJadvali.Domain\DarsJadvali.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

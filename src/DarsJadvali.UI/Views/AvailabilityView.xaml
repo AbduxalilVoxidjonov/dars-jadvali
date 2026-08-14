@@ -1,0 +1,131 @@
+<UserControl x:Class="DarsJadvali.UI.Views.AvailabilityView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:vm="clr-namespace:DarsJadvali.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:AvailabilityViewModel}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                   Text="O'qituvchi vaqti" Style="{StaticResource AppPageTitle}" />
+
+        <Border Grid.Row="1" Grid.Column="0"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Margin="0,0,16,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Text="O'qituvchilar"
+                           Style="{StaticResource AppSectionTitle}"
+                           Margin="14,12,14,6" />
+                <ListBox ItemsSource="{Binding Teachers}"
+                         SelectedItem="{Binding SelectedTeacher, Mode=TwoWay}"
+                         DisplayMemberPath="FullName"
+                         BorderThickness="0" />
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="1"
+                Background="{StaticResource AppSurfaceBrush}"
+                BorderBrush="{StaticResource AppBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="18">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <TextBlock Style="{StaticResource AppSectionTitle}"
+                               Text="{Binding SelectedTeacher.FullName, StringFormat='Vaqt oraliqlari — {0}'}" />
+                    <TextBlock Style="{StaticResource AppHintText}"
+                               Text="Agar bir kun uchun umuman oraliq kiritilmasa, o'qituvchi o'sha kuni istalgan soatda dars bera oladi deb hisoblanadi. Vaqt formati: HH:mm" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Oraliq qo'shish"
+                                Command="{Binding AddRowCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="16,4" />
+                        <Button Content="Saqlash"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="12,0,0,0"
+                                Padding="24,4" />
+                    </StackPanel>
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource AppBorderBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="180" />
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <ComboBox Grid.Column="0"
+                                                  ItemsSource="{Binding DataContext.Days, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  SelectedItem="{Binding DayOfWeek, Mode=TwoWay}"
+                                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                  materialDesign:HintAssist.Hint="Kun"
+                                                  Margin="0,0,10,0">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={StaticResource WeekDayToUzbek}}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding StartText, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 materialDesign:HintAssist.Hint="Boshlanish"
+                                                 Margin="0,0,10,0" />
+
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding EndText, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 materialDesign:HintAssist.Hint="Tugash"
+                                                 Margin="0,0,10,0" />
+
+                                        <CheckBox Grid.Column="3"
+                                                  Content="Dars bera oladi"
+                                                  IsChecked="{Binding IsAvailable, Mode=TwoWay}"
+                                                  VerticalAlignment="Center" />
+
+                                        <Button Grid.Column="4"
+                                                Content="O'chirish"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                Foreground="{StaticResource AppErrorBrush}"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding DataContext.RemoveRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

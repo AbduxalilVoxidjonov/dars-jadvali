@@ -1,0 +1,144 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
+             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             x:Class="DarsJadvali.Desktop.Views.TeachersView"
+             x:DataType="vm:TeachersViewModel"
+             x:CompileBindings="True">
+
+  <Grid Margin="24" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+               Text="O'qituvchilar"
+               FontSize="22"
+               FontWeight="SemiBold"
+               Margin="0,0,0,14"
+               Foreground="{DynamicResource AppTextBrush}" />
+
+    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,12">
+      <Button Content="Qo'shish"
+              Command="{Binding NewCommand}"
+              IsEnabled="{Binding IsNotBusy}"
+              Padding="16,6" />
+      <Button Content="Tahrirlash"
+              Command="{Binding EditCommand}"
+              CommandParameter="{Binding SelectedTeacher}"
+              IsEnabled="{Binding HasSelection}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+      <Button Content="O'chirish"
+              Command="{Binding DeleteCommand}"
+              CommandParameter="{Binding SelectedTeacher}"
+              IsEnabled="{Binding HasSelection}"
+              Foreground="{DynamicResource AppErrorBrush}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+      <Button Content="Yangilash"
+              Command="{Binding RefreshCommand}"
+              IsEnabled="{Binding IsNotBusy}"
+              Margin="10,0,0,0"
+              Padding="16,6" />
+    </StackPanel>
+
+    <DataGrid Grid.Row="2" Grid.Column="0"
+              ItemsSource="{Binding Teachers}"
+              SelectedItem="{Binding SelectedTeacher, Mode=TwoWay}"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              SelectionMode="Single"
+              HeadersVisibility="Column"
+              GridLinesVisibility="Horizontal"
+              Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              BorderThickness="1">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Header="Rang" Width="70">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="ent:Teacher">
+              <Border Width="22" Height="22" CornerRadius="11"
+                      Margin="0,4"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Background="{Binding ColorCode, Converter={x:Static conv:ColorCodeToBrushConverter.Instance}}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Familiya, ism" Width="*"
+                            Binding="{Binding FullName, DataType=ent:Teacher}" />
+        <DataGridTextColumn Header="Telefon" Width="160"
+                            Binding="{Binding Phone, DataType=ent:Teacher}" />
+        <DataGridTemplateColumn Header="Faol" Width="80">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="ent:Teacher">
+              <CheckBox IsChecked="{Binding IsActive, Mode=OneWay}"
+                        IsHitTestVisible="False"
+                        HorizontalAlignment="Center" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Inline tahrirlash paneli (alohida oyna emas) -->
+    <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+            Width="340"
+            Margin="20,0,0,0"
+            Padding="18"
+            CornerRadius="8"
+            VerticalAlignment="Top"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            IsVisible="{Binding IsEditing}">
+      <StackPanel>
+        <TextBlock Text="{Binding EditorTitle}"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource AppTextBrush}" />
+
+        <TextBox Text="{Binding EditFullName}"
+                 Watermark="Familiya, ism"
+                 Margin="0,14,0,0" />
+
+        <TextBox Text="{Binding EditPhone}"
+                 Watermark="Telefon (ixtiyoriy)"
+                 Margin="0,12,0,0" />
+
+        <TextBlock Text="Rang"
+                   Margin="0,14,0,4"
+                   FontSize="12"
+                   Foreground="{DynamicResource AppMutedTextBrush}" />
+        <ComboBox ItemsSource="{Binding Colors}"
+                  SelectedItem="{Binding EditColor, Mode=TwoWay}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ColorOption">
+              <StackPanel Orientation="Horizontal">
+                <Border Width="18" Height="18" CornerRadius="9"
+                        VerticalAlignment="Center"
+                        Background="{Binding Code, Converter={x:Static conv:ColorCodeToBrushConverter.Instance}}" />
+                <TextBlock Text="{Binding Name}" Margin="10,0,0,0" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <CheckBox Content="Faol o'qituvchi"
+                  IsChecked="{Binding EditIsActive, Mode=TwoWay}"
+                  Margin="0,16,0,0" />
+
+        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+          <Button Content="Bekor qilish"
+                  Command="{Binding CancelEditCommand}"
+                  IsEnabled="{Binding IsNotBusy}" />
+          <Button Content="Saqlash"
+                  Command="{Binding SaveCommand}"
+                  IsEnabled="{Binding IsNotBusy}"
+                  Margin="10,0,0,0"
+                  Padding="20,6" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>
