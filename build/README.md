@@ -148,6 +148,37 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\build\publish-windows.ps1
 Skript **faqat Windows'da** ishlaydi — macOS/Linux'da ishga tushirilsa aniq
 xato bilan to'xtaydi va `publish-macos.sh` ga yo'naltiradi.
 
+### macOS/Linux'da Windows uchun yig'ish
+
+Skript Windows'ni talab qiladi, lekin **`.exe` faylining o'zini macOS'da ham
+yig'sa bo'ladi** — .NET kross-kompilyatsiyani qo'llab-quvvatlaydi. Windows faqat
+dasturni **ishga tushirib sinash** va `signtool` bilan **imzolash** uchun kerak.
+Skriptdagi bilan aynan bir xil natija beradigan buyruq:
+
+```bash
+dotnet publish src/DarsJadvali.Desktop -c Release -r win-x64 --self-contained true \
+  -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false \
+  -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true \
+  -o publish/win-x64
+```
+
+`win-x86` uchun ham xuddi shunday. Natija — bitta `DarsJadvali.exe` (x64 ~49 MB,
+x86 ~46 MB), yonida boshqa fayl qolmaydi.
+
+Yig'ilganini tekshirish (macOS'da):
+
+```bash
+file publish/win-x64/DarsJadvali.exe
+# PE32+ executable (GUI) x86-64, for MS Windows
+```
+
+`GUI` so'zi muhim — konsol oynasi ochilmasligini bildiradi. v1.0.0 relizidagi
+Windows fayllari aynan shu yo'l bilan macOS'da yig'ilgan.
+
+> **Diqqat:** bu usul faylni yig'adi, lekin uning **haqiqatan ishlashini
+> tasdiqlamaydi**. Windows'da bir marta sinab ko'rmaguningizcha "ishlaydi" deb
+> hisoblamang.
+
 ### Parametrlar
 
 | Parametr | Qiymatlar | Standart | Izoh |
