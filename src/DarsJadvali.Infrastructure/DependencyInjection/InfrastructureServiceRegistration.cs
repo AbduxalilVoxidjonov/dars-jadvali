@@ -54,15 +54,16 @@ public static class InfrastructureServiceRegistration
     /// Yangilanishni tekshirish servisi. <see cref="HttpClient"/> qo'shimcha paketsiz,
     /// bitta uzoq yashovchi nusxa sifatida yaratiladi (dastur davomida bitta manzilga
     /// kamdan-kam murojaat qilinadi). Kutish vaqti tekshiruvchining o'zida cheklanadi.
+    /// Mijoz <see cref="GitHubUpdateChecker.CreateHttpClient"/> orqali yaratiladi —
+    /// u redirect'ni AVTOMATIK KUZATMAYDI, aks holda <c>Location</c> sarlavhasi
+    /// (so'nggi reliz tegi) yo'qoladi.
     /// </summary>
     public static IServiceCollection AddUpdateChecker(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IUpdateChecker>(_ => new GitHubUpdateChecker(new HttpClient
-        {
-            Timeout = GitHubUpdateChecker.RequestTimeout,
-        }));
+        services.TryAddSingleton<IUpdateChecker>(_ =>
+            new GitHubUpdateChecker(GitHubUpdateChecker.CreateHttpClient()));
 
         return services;
     }

@@ -36,7 +36,18 @@ public static class AppInfo
     /// <summary>Relizlar ro'yxati sahifasi (brauzerda ochish uchun zaxira havola).</summary>
     public const string ReleasesUrl = RepositoryUrl + "/releases";
 
-    /// <summary>So'nggi relizni qaytaradigan GitHub API manzili.</summary>
+    /// <summary>
+    /// So'nggi relizga yo'naltiruvchi sahifa. Bu manzil API EMAS: u <c>302</c> bilan
+    /// <c>.../releases/tag/vX.Y.Z</c> ga yo'naltiradi va so'rovlar cheklovi (rate limit)
+    /// qo'llanmaydi. Yangilanishni tekshirishning ASOSIY manbasi shu.
+    /// </summary>
+    public const string LatestReleaseUrl = ReleasesUrl + "/latest";
+
+    /// <summary>
+    /// So'nggi relizni qaytaradigan GitHub API manzili. Autentifikatsiyasiz bu API
+    /// IP manzil bo'yicha soatiga 60 ta so'rov bilan cheklangan, shuning uchun u faqat
+    /// reliz izohini olish uchun (best-effort) va zaxira usul sifatida ishlatiladi.
+    /// </summary>
     public const string ReleasesApiUrl =
         "https://api.github.com/repos/AbduxalilVoxidjonov/dars-jadvali/releases/latest";
 

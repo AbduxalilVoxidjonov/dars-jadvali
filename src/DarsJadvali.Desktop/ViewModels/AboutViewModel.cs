@@ -7,7 +7,6 @@ using CommunityToolkit.Mvvm.Input;
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Desktop.Services;
 using DarsJadvali.Domain.Common;
-using DarsJadvali.Infrastructure.DependencyInjection;
 
 namespace DarsJadvali.Desktop.ViewModels;
 
@@ -84,17 +83,11 @@ public sealed partial class AboutViewModel : ViewModelBase
     /// <summary>Karta egasi.</summary>
     public string DonateCardHolder => AppInfo.DonateCardHolder;
 
-    /// <summary>Ma'lumotlar bazasi fayli yo'li (zaxira nusxa olish uchun).</summary>
-    public string DatabasePath => InfrastructureServiceRegistration.DefaultDbPath;
-
     /// <summary>Nusxa olindi degan xabar ko'rinadimi.</summary>
     public bool HasCopyFeedback => !string.IsNullOrEmpty(CopyFeedback);
 
     /// <summary>Reliz izohi bormi.</summary>
     public bool HasReleaseNotes => !string.IsNullOrEmpty(ReleaseNotes);
-
-    /// <summary>Loyihaning GitHub manzili.</summary>
-    public string RepositoryUrl => AppInfo.RepositoryUrl;
 
     public override Task LoadAsync(CancellationToken ct = default)
     {
@@ -203,17 +196,4 @@ public sealed partial class AboutViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private async Task CopyDatabasePathAsync()
-    {
-        try
-        {
-            await _dialogs.CopyToClipboardAsync(DatabasePath);
-            StatusMessage = "Ma'lumotlar bazasi yo'li nusxalandi.";
-        }
-        catch (Exception ex)
-        {
-            await _dialogs.ErrorAsync("Nusxa olishda xatolik yuz berdi.\n\n" + ex.Message);
-        }
-    }
 }

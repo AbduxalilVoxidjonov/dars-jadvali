@@ -125,10 +125,6 @@
                   HorizontalAlignment="Left"
                   Padding="16,6"
                   Margin="0,14,0,0" />
-
-          <TextBlock Text="{Binding RepositoryUrl}"
-                     Classes="AppHintText"
-                     Margin="0,10,0,0" />
         </StackPanel>
       </Border>
 
@@ -186,36 +182,6 @@
               </StackPanel>
             </StackPanel>
           </Border>
-        </StackPanel>
-      </Border>
-
-      <!-- Ma'lumotlar bazasi -->
-      <Border Background="{DynamicResource AppSurfaceBrush}"
-              BorderBrush="{DynamicResource AppBorderBrush}"
-              BorderThickness="1"
-              CornerRadius="8"
-              Padding="22"
-              Margin="0,0,0,24">
-        <StackPanel>
-          <TextBlock Text="Ma'lumotlar bazasi"
-                     Classes="AppSectionTitle" />
-
-          <TextBlock Text="Barcha ma'lumotlar quyidagi faylda saqlanadi. Zaxira nusxa olish uchun shu faylni ko'chirib qo'ying."
-                     TextWrapping="Wrap"
-                     Classes="AppHintText"
-                     Margin="0,10,0,0" />
-
-          <SelectableTextBlock Text="{Binding DatabasePath}"
-                               FontFamily="Menlo,Consolas,Courier New,monospace"
-                               FontSize="13"
-                               TextWrapping="Wrap"
-                               Margin="0,10,0,0" />
-
-          <Button Content="Yo'lni nusxalash"
-                  Command="{Binding CopyDatabasePathCommand}"
-                  HorizontalAlignment="Left"
-                  Padding="16,6"
-                  Margin="0,12,0,0" />
         </StackPanel>
       </Border>
 
