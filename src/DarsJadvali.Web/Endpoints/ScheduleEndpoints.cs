@@ -1,17 +1,55 @@
 using DarsJadvali.Application.Export;
 using DarsJadvali.Application.Generation;
+using DarsJadvali.Infrastructure.Export;
 using DarsJadvali.Application.Services;
 using DarsJadvali.Application.Validation;
 using DarsJadvali.Web.Dtos;
 
 namespace DarsJadvali.Web.Endpoints;
 
-/// <summary>Dars jadvali: ko'rish, joylashtirish, ko'chirish, avtomatik tuzish, tekshirish.</summary>
+/// <summary>
+/// <b>ESKIRGAN</b> — eski <c>ScheduleEntry</c> modeli asosidagi dars jadvali endpointlari.
+/// </summary>
+/// <remarks>
+/// O'rniga <c>/api/board/*</c> (<see cref="BoardEndpoints"/>) ishlatiladi: u juft darsni
+/// (<c>Length</c>), A/B haftani (<c>WeeksMask</c>), guruh bo'linmasini va bazaga
+/// saqlanadigan qulfni ham beradi. Bu yerdagi endpointlar Desktop ko'chib bo'lgunicha
+/// yonma-yon ishlaydi va har javobda <c>Deprecation: true</c> sarlavhasi bilan belgilanadi.
+/// <para>
+/// <b>Nega hali o'chirilmadi.</b> Dastur bilan birga keladigan veb sahifasi
+/// (<c>wwwroot/index.html</c>) hali shu yo'lni 8 ta joyda chaqiradi: bosh sahifadagi
+/// jadval ko'rinishi, tez amallar (tuzish / tekshirish / tozalash) va butun
+/// «Dars jadvali (eski)» sahifasi. Bundan tashqari <c>/api/board</c> da "butun jadvalni
+/// tozalash" endpointi YO'Q va u sinfni <c>SchoolClass.Id</c> bilan biladi, sahifa esa
+/// eski <c>ClassGroup.Id</c> bilan ishlaydi. Shu sababli bu yo'lni olib tashlash
+/// sahifaning o'zini ko'chirishni talab qiladi — u alohida ish sifatida rejalashtirilgan.
+/// </para>
+/// </remarks>
 public static class ScheduleEndpoints
 {
+    /// <summary>"Eskirgan" belgisi sarlavhasi.</summary>
+    public const string DeprecationHeader = "Deprecation";
+
+    /// <summary>Eskirgan endpointlarni ro'yxatdan o'tkazadi.</summary>
+    /// <param name="api"><c>/api</c> guruhi.</param>
+    [Obsolete("Eski ScheduleEntry modeli. O'rniga /api/board/* (MapBoardEndpoints) ishlatiladi.")]
     public static void MapScheduleEndpoints(this IEndpointRouteBuilder api)
     {
         var group = api.MapGroup("/schedule");
+
+        // Har javobga "eskirgan" belgisi qo'yiladi — mijoz ko'chganini tekshira oladi.
+        group.AddEndpointFilter(async (context, next) =>
+        {
+            var response = context.HttpContext.Response;
+            response.OnStarting(() =>
+            {
+                response.Headers[DeprecationHeader] = "true";
+                response.Headers["Link"] = "</api/board>; rel=\"successor-version\"";
+                return Task.CompletedTask;
+            });
+
+            return await next(context);
+        });
 
         group.MapGet("/", async (int? classGroupId, int? teacherId, IScheduleService svc, CancellationToken ct) =>
         {
@@ -73,12 +111,13 @@ public static class ScheduleEndpoints
         // ya'ni brauzer PDF ni ochmasdan yuklab oladi.
         group.MapGet("/pdf", async (
             HttpRequest request,
-            ISchoolTimetablePdfExporter exporter,
+            IScopedTimetablePdfExporter exporter,
             CancellationToken ct) =>
         {
             // Parametrlar qo'lda o'qiladi — noto'g'ri qiymatda 500 emas, tushunarli 400 qaytadi.
             var errors = new List<string>();
             var classGroupId = ReadInt(request, "classGroupId", errors);
+            var teacherId = ReadInt(request, "teacherId", errors);
             var landscape = ReadBool(request, "landscape", errors);
             var includeTeacher = ReadBool(request, "includeTeacher", errors);
             var includeRoom = ReadBool(request, "includeRoom", errors);
@@ -86,21 +125,41 @@ public static class ScheduleEndpoints
             if (errors.Count > 0)
                 return Results.Json(new { error = string.Join(" ", errors) }, statusCode: StatusCodes.Status400BadRequest);
 
+            if (classGroupId is > 0 && teacherId is > 0)
+            {
+                return Results.Json(
+                    new { error = "Bir vaqtda ham sinf, ham o'qituvchi tanlab bo'lmaydi." },
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
             var schoolName = request.Query["schoolName"].ToString();
 
             var options = new PdfExportOptions
             {
-                ClassGroupId = classGroupId is > 0 ? classGroupId : null,
                 SchoolName = string.IsNullOrWhiteSpace(schoolName) ? null : schoolName.Trim(),
                 Landscape = landscape ?? true,
                 IncludeTeacherName = includeTeacher ?? true,
                 IncludeRoom = includeRoom ?? true
             };
 
-            var pdf = await exporter.ExportAsync(options, ct);
-            var fileName = exporter.SuggestFileName(options, DateTime.Now);
+            // Qamrov ANIQ tanlanadi: "scope=school" so'ralmasa, sinf/o'qituvchi ko'rsatilishi shart.
+            var scope = request.Query["scope"].ToString();
+            var wantsSchool = scope.Equals("school", StringComparison.OrdinalIgnoreCase);
 
-            return Results.File(pdf, "application/pdf", fileName);
+            if (!wantsSchool && classGroupId is not > 0 && teacherId is not > 0)
+            {
+                return Results.Json(
+                    new { error = "Qamrov ko'rsatilmagan: classGroupId, teacherId yoki scope=school bering." },
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var document = classGroupId is > 0
+                ? await exporter.ExportClassScheduleAsync(classGroupId.Value, options, ct)
+                : teacherId is > 0
+                    ? await exporter.ExportTeacherScheduleAsync(teacherId.Value, options, ct)
+                    : await exporter.ExportSchoolScheduleAsync(options, ct);
+
+            return Results.File(document.Content, "application/pdf", document.FileName);
         });
     }
 

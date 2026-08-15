@@ -186,6 +186,40 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
   .nav a{justify-content:center}
 }
 
+/* ===================== Jadval to'ri (yangi Card/Lesson modeli) ===================== */
+table.grid.board{min-width:880px}
+.board td{height:70px}
+/* Kartochka: sudrab ko'chiriladi, shuning uchun matn belgilanmaydi */
+.board .lesson{min-height:60px;cursor:grab;user-select:none}
+.board .lesson.dragging{opacity:.45}
+.board .cell-blank{min-height:60px}
+/* Ko'chirishda katak yorib ko'rsatiladi */
+.board td.drop-hot{background:#eaf3fd;outline:2px dashed var(--primary);outline-offset:-3px}
+/* Smena ajratuvchi qatori (butun kenglik) */
+.board tr.shift-band td{
+  height:auto;padding:5px 8px;background:#e8edf6;color:var(--muted);text-align:center;
+  font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+}
+/* A/B hafta nishoni */
+.week-badge{
+  position:absolute;right:4px;bottom:4px;width:18px;height:18px;border-radius:50%;
+  background:var(--primary);color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+/* Qulflangan kartochka — qalin ramka */
+.lesson.locked{border:2px solid var(--warn);border-left-width:5px}
+/* Guruh darslari yonma-yon */
+.lane-wrap{display:flex;gap:4px;align-items:stretch}
+.lane-wrap > .lesson{flex:1;min-width:0}
+.card-lock{
+  position:absolute;top:2px;right:3px;padding:0 4px;font-size:11px;line-height:1.5;
+  background:rgba(255,255,255,.78);border:1px solid var(--line);border-radius:5px;cursor:pointer;
+}
+.card-lock:hover{background:#fff}
+/* Generatsiya holati chizig'i */
+.progress{height:10px;border-radius:6px;background:#e6ebf4;overflow:hidden}
+.progress > i{display:block;height:100%;width:0;background:var(--primary);transition:width .25s}
+
 /* ===================== Chop etish ===================== */
 @media print{
   @page{size:landscape;margin:10mm}
@@ -228,10 +262,12 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
       <a data-page="assignments"><i class="ico">🔗</i><span class="txt">Biriktirmalar</span></a>
       <a data-page="workdays"><i class="ico">📅</i><span class="txt">Hafta kunlari</span></a>
       <a data-page="availability"><i class="ico">⏰</i><span class="txt">O'qituvchi vaqti</span></a>
-      <a data-page="schedule"><i class="ico">🗓️</i><span class="txt">Dars jadvali</span></a>
+      <a data-page="board"><i class="ico">🧩</i><span class="txt">Jadval to'ri</span></a>
+      <a data-page="schedule"><i class="ico">🗓️</i><span class="txt">Dars jadvali (eski)</span></a>
       <a data-page="about"><i class="ico">ℹ️</i><span class="txt">Dastur haqida</span></a>
     </nav>
-    <div class="side-foot">v1.0.0 · Abduxalil Voxidjonov</div>
+    <!-- Versiya qo'lda yozilmaydi: /api/about dan olinadi (yagona manba — Directory.Build.props). -->
+    <div class="side-foot"><span id="sideVersion">…</span> · Abduxalil Voxidjonov</div>
   </aside>
 
   <div class="main">
@@ -380,7 +416,72 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
         </div>
       </section>
 
-      <!-- ============ DARS JADVALI ============ -->
+      <!-- ============ JADVAL TO'RI (yangi Card/Lesson modeli) ============ -->
+      <section class="page" id="page-board">
+        <div class="card no-print">
+          <div class="row">
+            <div style="width:180px">
+              <label class="fl" for="boardMode">Ko'rinish</label>
+              <select id="boardMode">
+                <option value="class">Sinf bo'yicha</option>
+                <option value="teacher">O'qituvchi bo'yicha</option>
+                <option value="room">Xona bo'yicha</option>
+              </select>
+            </div>
+            <div class="grow" id="boardTargetBox">
+              <label class="fl" for="boardTarget" id="boardTargetLabel">Sinf</label>
+              <select id="boardTarget"></select>
+            </div>
+            <!-- Xona raqami faqat «Xona bo'yicha» rejimida ko'rinadi -->
+            <div style="width:150px;display:none" id="boardRoomBox">
+              <label class="fl" for="boardRoom">Xona</label>
+              <input type="text" id="boardRoom" placeholder="masalan: 204">
+            </div>
+            <button class="btn ghost" id="btnBoardReload">🔄 Yangilash</button>
+            <button class="btn" id="btnBoardGenerate">⚙️ Avtomatik tuzish</button>
+            <button class="btn ghost" id="btnBoardValidate">✔️ Tekshirish</button>
+            <div style="width:190px">
+              <label class="fl" for="boardDesign">Chop etish dizayni</label>
+              <select id="boardDesign"></select>
+            </div>
+            <button class="btn ghost" id="btnBoardPdf">📄 PDF</button>
+            <button class="btn ghost" id="btnBoardHtml">🌐 HTML</button>
+          </div>
+          <p class="muted" style="margin:10px 0 0">
+            Kartochkani sichqoncha bilan boshqa katakka sudrab ko'chirish mumkin.
+            🔒 bosilgan kartochka avtomatik tuzishda joyidan qo'zg'almaydi.
+          </p>
+        </div>
+
+        <!-- Avtomatik tuzish holati (so'rov davomida ko'rinadi) -->
+        <div class="card no-print" id="boardJob" style="display:none">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <b id="boardJobPhase">Tayyorlanmoqda…</b>
+            <div class="row" style="gap:10px">
+              <span class="muted" id="boardJobInfo"></span>
+              <button class="btn danger sm" id="btnBoardCancel">⛔ Bekor qilish</button>
+            </div>
+          </div>
+          <div class="progress"><i id="boardJobBar"></i></div>
+        </div>
+
+        <div class="card">
+          <div class="print-title">Dars jadvali</div>
+          <div class="grid-wrap" id="boardGrid"><div class="empty">Yuklanmoqda…</div></div>
+        </div>
+
+        <div class="card" id="boardResultCard" style="display:none">
+          <h3>Natija</h3>
+          <div id="boardResult"></div>
+        </div>
+
+        <div class="card no-print">
+          <h3>Joylashtirilmagan darslar</h3>
+          <div id="boardUnplaced"><p class="muted">Yuklanmoqda…</p></div>
+        </div>
+      </section>
+
+      <!-- ============ DARS JADVALI (eskirgan) ============ -->
       <section class="page" id="page-schedule">
         <div class="card">
           <div class="row">
@@ -429,6 +530,9 @@ const state = {
   homeSchedule: [], homeSchClassId: "",   // bosh sahifadagi jadval (to'liq, filtrlanmagan)
   years: [], sets: [],                    // o'quv yillari va dars jadvali variantlari
   yearId: null, scheduleId: null,         // tanlangan yil va faol jadval
+  // «Jadval to'ri» sahifasi (yangi Card/Lesson modeli)
+  boardAxes: null, boardCards: [], boardUnplaced: [], boardDesigns: [],
+  boardJobId: null, boardPolling: false, boardDragCardId: null,
   page: "home"
 };
 
@@ -437,8 +541,47 @@ const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-async function api(path, options = {}) {
+/* ---------------------- API kalit ----------------------
+   Server yozuv so'rovlarini (POST/PUT/DELETE) kalitsiz qabul qilmaydi.
+   Kalit shu kompyuterda ishlayotgan sahifaga /api/security/local-key orqali
+   avtomatik beriladi (u faqat loopback so'rovga javob qaytaradi), shuning uchun
+   oddiy foydalanuvchi hech narsa kiritmaydi. Boshqa qurilmadan ochilganda esa
+   kalit qo'lda so'raladi. */
+const API_KEY_STORAGE = "darsjadvali.apiKey";
+const API_KEY_HEADER = "X-Api-Key";
+let apiKey = localStorage.getItem(API_KEY_STORAGE) || "";
+
+async function loadApiKey() {
+  if (apiKey) return apiKey;
+  try {
+    const res = await fetch("/api/security/local-key");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.apiKey) {
+        apiKey = data.apiKey;
+        localStorage.setItem(API_KEY_STORAGE, apiKey);
+      }
+    }
+  } catch { /* kalitsiz davom etamiz — o'qish baribir ishlaydi */ }
+  return apiKey;
+}
+
+function askApiKey() {
+  const entered = window.prompt(
+    "Ruxsat kaliti kerak. Uni dastur ishga tushgan oynadan (yoki baza yonidagi api-key.txt faylidan) oling:",
+    "");
+  if (entered && entered.trim()) {
+    apiKey = entered.trim();
+    localStorage.setItem(API_KEY_STORAGE, apiKey);
+    return true;
+  }
+  return false;
+}
+
+async function api(path, options = {}, retry = true) {
   const opts = Object.assign({ headers: { "Content-Type": "application/json" } }, options);
+  opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+  if (apiKey) opts.headers[API_KEY_HEADER] = apiKey;
   if (opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
 
   let res;
@@ -447,6 +590,17 @@ async function api(path, options = {}) {
   } catch (e) {
     throw new Error("Serverga ulanib bo'lmadi. Dastur ishlab turibdimi?");
   }
+
+  // Kalit eskirgan/yo'q: bir marta yangilab, so'rovni takrorlaymiz.
+  if (res.status === 401 && retry) {
+    localStorage.removeItem(API_KEY_STORAGE);
+    apiKey = "";
+    await loadApiKey();
+    if (!apiKey && !askApiKey())
+      throw new Error("Ruxsat yo'q: kalit kiritilmadi.");
+    return api(path, options, false);
+  }
+
   if (res.status === 204) return null;
 
   const text = await res.text();
@@ -533,7 +687,7 @@ function conflictsHtml(validation) {
 const PAGE_TITLES = {
   home:"Bosh sahifa", teachers:"O'qituvchilar", subjects:"Fanlar", classes:"Sinflar",
   assignments:"Biriktirmalar", workdays:"Hafta kunlari", availability:"O'qituvchi vaqti",
-  schedule:"Dars jadvali", about:"Dastur haqida"
+  board:"Jadval to'ri", schedule:"Dars jadvali (eskirgan)", about:"Dastur haqida"
 };
 
 $("#nav").addEventListener("click", e => {
@@ -543,6 +697,8 @@ $("#nav").addEventListener("click", e => {
 
 async function go(page) {
   state.page = page;
+  // Sahifadan chiqilganda «Jadval to'ri» generatsiya so'rovlari to'xtaydi.
+  if (page !== "board") state.boardPolling = false;
   $$("#nav a").forEach(a => a.classList.toggle("active", a.dataset.page === page));
   $$(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + page));
   $("#pageTitle").textContent = PAGE_TITLES[page] || "";
@@ -559,6 +715,7 @@ async function loadPage(page) {
     case "assignments":  return renderAssignments();
     case "workdays":     return renderWorkDays();
     case "availability": return renderAvailability();
+    case "board":        return renderBoardPage();
     case "schedule":     return renderSchedulePage();
     case "about":        return renderAbout();
   }
@@ -955,7 +1112,10 @@ $("#btnHomeSchPrint").onclick = () => window.print();
    "Content-Disposition: attachment" qaytargani uchun sahifa almashmaydi. */
 function downloadSchedulePdf(classGroupId) {
   const params = new URLSearchParams();
+  // Qamrov ATAYLAB yoziladi: sinf tanlanmagan bo'lsa "butun maktab" ekani aniq
+  // ko'rsatiladi — server endi qamrovsiz so'rovni qabul qilmaydi.
   if (classGroupId) params.set("classGroupId", String(classGroupId));
+  else params.set("scope", "school");
   const qs = params.toString();
   toast("PDF tayyorlanmoqda…", "info");
   window.location.href = "/api/schedule/pdf" + (qs ? "?" + qs : "");
@@ -1439,7 +1599,443 @@ $("#btnSaveAv").onclick = async () => {
   } catch (e) { fail(e); }
 };
 
-/* ===================== DARS JADVALI ===================== */
+/* ===================== JADVAL TO'RI (yangi Card/Lesson modeli) =====================
+   Bu sahifa serverdagi /api/board/* endpointlari bilan ishlaydi. Eski «Dars jadvali»
+   sahifasi (ScheduleEntry modeli) o'zgarishsiz qoladi — u eskirgan hisoblanadi.
+   ================================================================================= */
+
+/** Ro'yxat elementidan matn oladi: server ba'zan satr, ba'zan {message,code} qaytaradi. */
+const boardText = x => typeof x === "string" ? x : ((x && (x.message || x.code)) || "");
+
+/** Kartochka egallagan soat raqamlari (juft darsda bir nechta). */
+function boardCardPeriods(c) {
+  if (c.periodNumbers && c.periodNumbers.length) return c.periodNumbers.slice().sort((a, b) => a - b);
+  const len = Math.max(1, c.length || 1);
+  const out = [];
+  for (let i = 0; i < len; i++) out.push(c.periodNo + i);
+  return out;
+}
+
+async function renderBoardPage() {
+  state.boardPolling = false;
+  hideBoardJob();
+
+  const [axes, designs] = await Promise.all([
+    api("/board/axes"),
+    api("/board/designs").catch(() => [])   // dizaynlar bo'lmasa ham sahifa ishlaydi
+  ]);
+  state.boardAxes = axes || null;
+  state.boardDesigns = designs || [];
+
+  fillSelect($("#boardDesign"), state.boardDesigns, "key", d => d.name,
+             state.boardDesigns.length ? null : "— standart —");
+
+  syncBoardFilters();
+  await reloadBoard();
+}
+
+/** Rejimga qarab tanlagichlarni to'ldiradi (sinf / o'qituvchi / xona). */
+function syncBoardFilters() {
+  const ax = state.boardAxes;
+  const mode = $("#boardMode").value;
+  const isRoom = mode === "room";
+
+  $("#boardTargetBox").style.display = isRoom ? "none" : "";
+  $("#boardRoomBox").style.display   = isRoom ? "" : "none";
+  $("#boardTargetLabel").textContent = mode === "class" ? "Sinf" : "O'qituvchi";
+
+  if (isRoom || !ax) return;
+  const items = mode === "class" ? (ax.classes || []) : (ax.teachers || []);
+  fillSelect($("#boardTarget"), items, "id", i => mode === "class" ? i.name : i.fullName,
+             items.length ? "— barchasi —" : "— ro'yxat bo'sh —");
+}
+
+/** Tanlangan filtr bo'yicha /board/cards uchun so'rov satri. */
+function boardCardsQuery() {
+  const mode = $("#boardMode").value;
+  const p = new URLSearchParams();
+  if (mode === "room") {
+    const room = ($("#boardRoom").value || "").trim();
+    if (room) p.set("room", room);
+  } else {
+    const id = +$("#boardTarget").value || 0;
+    if (id) p.set(mode === "class" ? "classId" : "teacherId", String(id));
+  }
+  const qs = p.toString();
+  return qs ? "?" + qs : "";
+}
+
+async function reloadBoard() {
+  if (!state.boardAxes) {
+    $("#boardGrid").innerHTML = `<div class="empty">Jadval o'qlarini olib bo'lmadi. Jadval tanlanganini tekshiring.</div>`;
+    return;
+  }
+  const [cards, unplaced] = await Promise.all([
+    api("/board/cards" + boardCardsQuery()),
+    api("/board/unplaced").catch(() => [])
+  ]);
+  state.boardCards = cards || [];
+  state.boardUnplaced = unplaced || [];
+  drawBoard();
+  drawBoardUnplaced();
+}
+
+/* ---------------------- To'rni chizish ---------------------- */
+function drawBoard() {
+  const box = $("#boardGrid");
+  const ax = state.boardAxes;
+  const days = ax.days || [];
+  const periods = ax.periods || [];
+
+  if (!days.length || !periods.length) {
+    box.innerHTML = `<div class="empty">Hafta kunlari yoki dars soatlari sozlanmagan. «Hafta kunlari» bo'limiga kiring.</div>`;
+    return;
+  }
+
+  const mode = $("#boardMode").value;
+  const subjColor = {}; (ax.subjects || []).forEach(s => subjColor[s.id] = s.colorCode);
+  const teachColor = {}; (ax.teachers || []).forEach(t => teachColor[t.id] = t.colorCode);
+
+  /* Kartochka rangi: sinf ko'rinishida o'qituvchi rangi, aks holda fan rangi. */
+  const colorOf = c => {
+    const tid = (c.teacherIds || [])[0];
+    const byTeacher = tid ? teachColor[tid] : null;
+    const bySubject = subjColor[c.subjectId];
+    return normColor(mode === "class" ? (byTeacher || bySubject) : (bySubject || byTeacher));
+  };
+
+  /* (kun|qator) -> shu katakda BOSHLANADIGAN kartochkalar; guruh darslari bir nechta bo'ladi.
+     Kalit sifatida soat RAQAMI emas, jadvaldagi QATOR indeksi olinadi: tanaffus yoki
+     nolinchi soat bo'lsa raqamlar uzluksiz bo'lmasligi mumkin. */
+  const rowOfPeriod = {};
+  periods.forEach((p, i) => rowOfPeriod[p.periodNo] = i);
+
+  const startAt = {};
+  state.boardCards.forEach(c => {
+    const row = rowOfPeriod[boardCardPeriods(c)[0]];
+    if (row === undefined) return;   // bu soat jadvalda yo'q — chizilmaydi
+    const key = c.dayNo + "|" + row;
+    (startAt[key] = startAt[key] || []).push(c);
+  });
+
+  /* occupied — juft darsning davomi egallagan kataklar: ularda <td> UMUMAN chizilmaydi,
+     aks holda rowspan tufayli qator o'ngga siljib ketadi.
+     Juft dars o'zining ikkinchi soatida BOSHQA kartochka bo'lsa (masalan B haftadagi
+     dars) yaxlit blok qilib bo'lmaydi — bunda uzunlik qisqartiriladi, ma'lumot esa
+     kartochkadagi "⏱ N soat" belgisida qoladi. */
+  const spanAt = {}, occupied = {};
+  Object.keys(startAt).forEach(key => {
+    const parts = key.split("|");
+    const day = +parts[0], row = +parts[1];
+
+    const want = Math.max.apply(null, startAt[key].map(c => boardCardPeriods(c).length));
+    let span = Math.min(want, periods.length - row);
+    for (let k = 1; k < span; k++) {
+      if (startAt[day + "|" + (row + k)]) { span = k; break; }
+    }
+
+    spanAt[key] = span;
+    for (let k = 1; k < span; k++) occupied[day + "|" + (row + k)] = true;
+  });
+
+  // Ikki smena: har xil shiftName bo'lsa, har smena boshida ajratuvchi qator chiqadi.
+  const shiftNames = [];
+  periods.forEach(p => { if (p.shiftName && shiftNames.indexOf(p.shiftName) < 0) shiftNames.push(p.shiftName); });
+  const multiShift = shiftNames.length > 1;
+  const colCount = days.length + 1;
+
+  let html = `<table class="grid board"><thead><tr><th class="hour">Soat</th>` +
+    days.map(d => `<th>${esc(d.name)}</th>`).join("") + `</tr></thead><tbody>`;
+
+  let prevShift = null;
+  periods.forEach((p, rowIndex) => {
+    if (multiShift && p.shiftName && p.shiftName !== prevShift)
+      html += `<tr class="shift-band"><td colspan="${colCount}">${esc(p.shiftName)}</td></tr>`;
+    prevShift = p.shiftName || prevShift;
+
+    // Soat raqami UZLUKSIZ: 2-smenaning birinchi soati "7" bo'lib chiqadi.
+    html += `<tr><td class="hour"><b>${esc(p.periodNo)}</b>` +
+      (p.startTime ? `<div class="muted">${esc(p.startTime)}<br>${esc(p.endTime)}</div>` : "") + `</td>`;
+
+    days.forEach(d => {
+      const key = d.dayNo + "|" + rowIndex;
+      const list = startAt[key] || [];
+
+      if (!list.length) {
+        if (occupied[key]) return;   // juft dars egallagan — katak chizilmaydi
+        html += `<td data-drop="1" data-day="${d.dayNo}" data-period="${p.periodId}">
+            <div class="cell-blank"></div></td>`;
+        return;
+      }
+
+      const span = spanAt[key] || 1;
+      html += `<td data-drop="1" data-day="${d.dayNo}" data-period="${p.periodId}"` +
+        (span > 1 ? ` rowspan="${span}"` : "") + `>` +
+        `<div class="lane-wrap">${list.map(c => boardCardHtml(c, mode, colorOf(c))).join("")}</div></td>`;
+    });
+
+    html += `</tr>`;
+  });
+
+  box.innerHTML = html + `</tbody></table>`;
+  bindBoardGrid();
+}
+
+/** Bitta kartochka. Guruh darslari yonma-yon turadi, shuning uchun kenglik berilmaydi. */
+function boardCardHtml(c, mode, color) {
+  const teachers = (c.teacherNames || []).join(", ");
+  const second = mode === "teacher" ? (c.className || "") : teachers;
+  const extra = mode === "room" && c.className ? `<span class="sub">${esc(c.className)}</span>` : "";
+  const span = boardCardPeriods(c).length;
+
+  return `<div class="lesson soft${c.isLocked ? " locked" : ""}" draggable="true"
+       data-card="${c.cardId}"
+       style="background:${softBg(color, .16)};border-left-color:${color}">
+      <button class="card-lock no-print" data-lock="${c.cardId}" data-lockto="${c.isLocked ? "0" : "1"}"
+              title="${c.isLocked ? "Qulfni ochish" : "Qulflash"}">${c.isLocked ? "🔒" : "🔓"}</button>
+      ${c.weekLabel ? `<span class="week-badge" title="${esc(c.weekLabel)} haftasi">${esc(c.weekLabel)}</span>` : ""}
+      <b>${esc(c.subjectName || "?")}</b>
+      ${second ? `<span class="sub">${esc(second)}</span>` : ""}
+      ${extra}
+      ${c.groupName ? `<span class="sub">(${esc(c.groupName)})</span>` : ""}
+      ${c.roomNumber ? `<span class="sub">🚪 ${esc(c.roomNumber)}</span>` : ""}
+      ${span > 1 ? `<span class="sub">⏱ ${span} soat</span>` : ""}
+    </div>`;
+}
+
+/** Qulf tugmalari + sudrab ko'chirish (HTML5 drag & drop). */
+function bindBoardGrid() {
+  $$("#boardGrid [data-lock]").forEach(b => b.onclick = async ev => {
+    ev.stopPropagation();
+    try {
+      await api("/board/lock", { method: "POST", body: {
+        cardId: +b.dataset.lock, isLocked: b.dataset.lockto === "1"
+      }});
+      await reloadBoard();
+    } catch (e) { fail(e); }
+  });
+
+  $$("#boardGrid [data-card]").forEach(el => {
+    el.addEventListener("dragstart", ev => {
+      state.boardDragCardId = +el.dataset.card;
+      el.classList.add("dragging");
+      if (ev.dataTransfer) {
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", el.dataset.card);
+      }
+    });
+    el.addEventListener("dragend", () => {
+      el.classList.remove("dragging");
+      state.boardDragCardId = null;
+    });
+  });
+
+  $$("#boardGrid td[data-drop]").forEach(td => {
+    td.addEventListener("dragover", ev => {
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+      td.classList.add("drop-hot");
+    });
+    td.addEventListener("dragleave", () => td.classList.remove("drop-hot"));
+    td.addEventListener("drop", ev => {
+      ev.preventDefault();
+      td.classList.remove("drop-hot");
+      const raw = (ev.dataTransfer && ev.dataTransfer.getData("text/plain")) || "";
+      const cardId = +raw || state.boardDragCardId || 0;
+      state.boardDragCardId = null;
+      if (cardId) placeBoardCard(cardId, +td.dataset.day, +td.dataset.period);
+    });
+  });
+}
+
+/** Kartochkani yangi (kun, soat) ga ko'chiradi. */
+async function placeBoardCard(cardId, dayNo, periodId) {
+  const body = { placements: [{ cardId, dayNo, periodId }], force: false };
+  if (state.boardAxes && state.boardAxes.scheduleId) body.scheduleId = state.boardAxes.scheduleId;
+
+  let r;
+  try { r = await api("/board/place", { method: "POST", body }); }
+  catch (e) { return fail(e); }
+
+  if (r && r.applied === false) {
+    // Rad etildi: sabablarni ko'rsatamiz (ko'pi bilan 4 ta, ekran to'lib ketmasin).
+    let msgs = (r.rejections || []).map(boardText).filter(Boolean);
+    if (!msgs.length)
+      (r.results || []).forEach(x => (x.conflicts || []).forEach(c => msgs.push(boardText(c))));
+    if (!msgs.length) msgs = ["Dars ko'chirilmadi."];
+    msgs.slice(0, 4).forEach(m => toast(m, "err"));
+  } else {
+    toast("Dars ko'chirildi");
+  }
+  try { await reloadBoard(); } catch (e) { fail(e); }
+}
+
+/* ---------------------- Joylashtirilmagan darslar ---------------------- */
+function drawBoardUnplaced() {
+  const box = $("#boardUnplaced");
+  const list = state.boardUnplaced || [];
+  if (!list.length) {
+    box.innerHTML = `<p class="muted">Joylashtirilmagan dars yo'q — barcha soatlar to'rga qo'yilgan.</p>`;
+    return;
+  }
+  const rows = list.map(u => `<tr>
+      <td><b>${esc(u.subjectName || "?")}</b></td>
+      <td>${esc(u.className || "—")}</td>
+      <td>${esc(u.groupName || "—")}</td>
+      <td>${esc((u.teacherNames || []).join(", ") || "—")}</td>
+      <td>${esc(u.placedPeriods)} / ${esc(u.periodsPerWeek)}</td>
+      <td><b style="color:var(--danger)">${esc(u.remainingPeriods)}</b> soat qoldi</td>
+    </tr>`).join("");
+
+  box.innerHTML = `<div class="tbl-wrap"><table>
+      <thead><tr><th>Fan</th><th>Sinf</th><th>Guruh</th><th>O'qituvchi</th><th>Qo'yilgan</th><th>Qoldiq</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------------------- Natija paneli ---------------------- */
+function showBoardResult(html) {
+  $("#boardResult").innerHTML = html;
+  $("#boardResultCard").style.display = "";
+}
+
+/* ---------------------- Avtomatik tuzish (uzoq davom etadigan ish) ---------------------- */
+function hideBoardJob() { $("#boardJob").style.display = "none"; }
+
+function showBoardJob(j) {
+  $("#boardJob").style.display = "";
+  const pct = Math.max(0, Math.min(100, Math.round(j && j.percent ? j.percent : 0)));
+  $("#boardJobPhase").textContent = (j && j.phase) ? j.phase : "Tuzilmoqda…";
+  $("#boardJobBar").style.width = pct + "%";
+  const parts = [pct + "%"];
+  if (j && j.totalCards) parts.push(`${j.placedCards || 0} / ${j.totalCards} dars`);
+  if (j && j.elapsedSeconds) parts.push((+j.elapsedSeconds).toFixed(1) + " s");
+  $("#boardJobInfo").textContent = parts.join(" · ");
+}
+
+/** Holatni har 700 ms da so'raydi (setInterval emas — javob kechiksa so'rovlar to'planmaydi). */
+function pollBoardJob(jobId) {
+  state.boardPolling = true;
+  state.boardJobId = jobId;
+
+  const tick = async () => {
+    if (!state.boardPolling || state.boardJobId !== jobId) return;   // sahifadan chiqilgan
+    let j;
+    try { j = await api("/board/generate/" + jobId); }
+    catch (e) { state.boardPolling = false; hideBoardJob(); return fail(e); }
+
+    if (!state.boardPolling || state.boardJobId !== jobId) return;
+    showBoardJob(j);
+
+    if (j && j.state === "running") { setTimeout(tick, 700); return; }
+
+    state.boardPolling = false;
+    hideBoardJob();
+    showBoardJobReport(j);
+    try { await reloadBoard(); } catch (e) { fail(e); }
+  };
+  setTimeout(tick, 700);
+}
+
+function showBoardJobReport(j) {
+  if (!j) return;
+  if (j.state === "cancelled") return showBoardResult(`<p><b>⛔ Avtomatik tuzish bekor qilindi.</b></p>`);
+  if (j.state === "failed")
+    return showBoardResult(`<p><b style="color:var(--danger)">❌ Xatolik:</b> ${esc(j.error || "noma'lum sabab")}</p>`);
+
+  const r = j.report || {};
+  const list = (arr, title, cls) => {
+    const items = (arr || []).map(boardText).filter(Boolean);
+    if (!items.length) return "";
+    return `<p style="margin:12px 0 6px"><b>${esc(title)}</b></p>` +
+      items.map(m => `<div class="conf ${cls || ""}">${esc(m)}</div>`).join("");
+  };
+
+  const placed = r.placedCards != null ? r.placedCards : (j.placedCards || 0);
+  const total  = r.totalCards  != null ? r.totalCards  : (j.totalCards || 0);
+  const secs   = r.elapsedSeconds != null ? r.elapsedSeconds : (j.elapsedSeconds || 0);
+
+  showBoardResult(`
+    <p><b>${r.success ? "✅ Muvaffaqiyatli" : "⚠️ Qisman bajarildi"}</b> —
+       qo'yildi: <b>${esc(placed)}</b> / ${esc(total)},
+       qo'yilmadi: <b>${esc(r.unplacedCards != null ? r.unplacedCards : Math.max(0, total - placed))}</b>,
+       jarima: ${esc(r.softCost != null ? r.softCost : (j.softCost || 0))},
+       vaqt: ${(+secs || 0).toFixed(2)} s</p>
+    ${list(r.messages, "Xabarlar")}
+    ${list(r.hardViolations, "Qattiq qoida buzilishlari", "Error")}
+    ${list(r.verificationFaults, "Tekshiruv xatolari", "Error")}
+    ${list(r.relaxationSuggestions, "Yumshatish takliflari", "Warning")}
+    ${list(r.unplacedLessons, "Joylashtirilmagan darslar", "Warning")}
+    ${(r.conflicts && r.conflicts.length) ? `<p style="margin:12px 0 6px"><b>Konfliktlar</b></p>` + conflictsHtml(r) : ""}`);
+}
+
+/* ---------------------- Chop etish (PDF / HTML) ----------------------
+   window.location.href bo'lgani uchun API kaliti ketmaydi — lekin GET o'qish
+   so'rovi kalitsiz ham ruxsat etilgan (eski downloadSchedulePdf ham shunday). */
+function boardPrint(format) {
+  const mode = $("#boardMode").value;
+  const targetId = +$("#boardTarget").value || 0;
+  const p = new URLSearchParams();
+
+  // Qamrov MAJBURIY: server qamrovsiz so'rovni qabul qilmaydi.
+  if (mode === "class" && targetId) p.set("classId", String(targetId));
+  else if (mode === "teacher" && targetId) p.set("teacherId", String(targetId));
+  else p.set("scope", "school");
+
+  const design = $("#boardDesign").value;
+  if (design) p.set("design", design);
+  if (format) p.set("format", format);
+  if (state.boardAxes && state.boardAxes.scheduleName) p.set("schoolName", state.boardAxes.scheduleName);
+
+  toast(format === "html" ? "HTML tayyorlanmoqda…" : "PDF tayyorlanmoqda…", "info");
+  window.location.href = "/api/board/print?" + p.toString();
+}
+
+/* ---------------------- Hodisalar ---------------------- */
+$("#boardMode").onchange = () => { syncBoardFilters(); reloadBoard().catch(fail); };
+$("#boardTarget").onchange = () => reloadBoard().catch(fail);
+$("#boardRoom").onchange = () => reloadBoard().catch(fail);
+$("#btnBoardReload").onclick = () => reloadBoard().catch(fail);
+$("#btnBoardPdf").onclick = () => boardPrint(null);
+$("#btnBoardHtml").onclick = () => boardPrint("html");
+
+$("#btnBoardValidate").onclick = async () => {
+  try {
+    const v = await api("/board/validate");
+    showBoardResult(
+      (v.isValid ? `<p><b style="color:var(--ok)">✅ Jadvalda jiddiy xato yo'q.</b></p>`
+                 : `<p><b style="color:var(--danger)">❌ Jadvalda xatolar bor.</b></p>`) + conflictsHtml(v));
+    toast(v.isValid ? "Jadval tekshirildi: xato yo'q" : "Jadvalda xatolar topildi", v.isValid ? "ok" : "err");
+  } catch (e) { fail(e); }
+};
+
+$("#btnBoardGenerate").onclick = async () => {
+  if (state.boardPolling) return toast("Avtomatik tuzish allaqachon ishlamoqda", "info");
+  if (!confirmAsk("Jadval avtomatik tuziladi. Qulflangan darslar joyida qoladi. Davom etamizmi?")) return;
+
+  const btn = $("#btnBoardGenerate");
+  btn.disabled = true;
+  try {
+    // complexity atayin yuborilmaydi — server standart qiymatini ishlatadi.
+    const job = await api("/board/generate", { method: "POST", body: {
+      seed: null, timeLimitSeconds: 60, savePartial: true, allowRelaxation: true, keepLocked: true
+    }});
+    if (!job || !job.jobId) { toast("Tuzish boshlanmadi", "err"); return; }
+    showBoardJob(job);
+    pollBoardJob(job.jobId);
+  } catch (e) { fail(e); }
+  finally { btn.disabled = false; }
+};
+
+$("#btnBoardCancel").onclick = async () => {
+  const id = state.boardJobId;
+  if (!id) return;
+  try {
+    await api("/board/generate/" + id, { method: "DELETE" });
+    toast("Bekor qilish so'raldi", "info");
+  } catch (e) { fail(e); }
+};
+
+/* ===================== DARS JADVALI (eskirgan) ===================== */
 async function renderSchedulePage() {
   await Promise.all([loadTeachers(), loadClasses(), loadSubjects(), loadAssignments(), loadWorkDays(), loadSlots()]);
 
@@ -1646,8 +2242,19 @@ async function renderAbout() {
   };
 }
 
+/* Yon panel versiyasi — serverdagi yagona manbadan. */
+async function showVersion() {
+  try {
+    const a = await api("/about");
+    $("#sideVersion").textContent = "v" + (a.version || "");
+  } catch { $("#sideVersion").textContent = ""; }
+}
+
 /* ===================== Ishga tushirish ===================== */
 (async function boot() {
+  // Kalit avval olinadi: keyingi barcha so'rovlar (jumladan yozuv) shu bilan ketadi.
+  await loadApiKey();
+  await showVersion();
   // Avval o'quv yili / jadval tanlagichi to'ldiriladi — sahifa qaysi jadval
   // ma'lumotini ko'rsatayotgani darhol ko'rinib tursin.
   try { await loadSets(); } catch (e) { fail(e); }
