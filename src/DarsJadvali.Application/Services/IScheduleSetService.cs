@@ -63,11 +63,19 @@ public interface IScheduleSetService
 public sealed class ScheduleSetService : IScheduleSetService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IScheduleCardCopier? _cards;
 
     /// <summary>Yangi servis yaratadi.</summary>
-    public ScheduleSetService(IUnitOfWork uow)
+    /// <param name="uow">Ish birligi (eski <c>ScheduleEntry</c> modeli).</param>
+    /// <param name="cards">
+    /// Kartochka (v2) nusxalovchisi. <c>null</c> bo'lsa (masalan Infrastructure
+    /// ro'yxatdan o'tkazilmagan holatda) faqat eski yozuvlar nusxalanadi — mavjud
+    /// <c>new ScheduleSetService(uow)</c> chaqiruvlari buzilmasin uchun IXTIYORIY.
+    /// </param>
+    public ScheduleSetService(IUnitOfWork uow, IScheduleCardCopier? cards = null)
     {
         _uow = uow ?? throw new ArgumentNullException(nameof(uow));
+        _cards = cards;
     }
 
     /// <inheritdoc />
@@ -163,6 +171,15 @@ public sealed class ScheduleSetService : IScheduleSetService
         }
 
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        // Kartochkalar (v2) ham ko'chadi. Busiz ko'chirish bajarilgan bazada nusxa
+        // /api/board va Desktop taxtasida BO'SH ko'rinardi — eski yozuvlar nusxalangani
+        // bilan yangi model ularni ko'rmaydi.
+        if (_cards is not null)
+        {
+            await _cards.CopyCardsAsync(scheduleId, copy.Id, ct).ConfigureAwait(false);
+        }
+
         return copy;
     }
 
@@ -207,30 +224,43 @@ public sealed class ScheduleSetService : IScheduleSetService
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// <b>Tranzaksiya va tartib majburiy</b> (00 §10.8, 3-band). <c>Schedules(IsActive)</c>
+    /// ustida filtrlangan UNIQUE indeks bor, ya'ni ayni paytda faqat BITTA faol jadval
+    /// bo'lishi mumkin. Shu sababli:
+    /// <list type="number">
+    /// <item>avval barcha faol jadvallar o'chiriladi (oraliq holat — 0 ta faol, indeks buzilmaydi);</item>
+    /// <item>keyin maqsad jadval yoqiladi.</item>
+    /// </list>
+    /// Ikkalasi bitta tranzaksiyada: xato bo'lsa eski faol jadval joyida qoladi.
+    /// Ilgari har jadval alohida <c>SaveChanges</c> bilan yangilanardi va oraliqda
+    /// 2 ta faol jadval bo'lib qolardi — aynan shu sabab indeks qo'yilmagan edi.
+    /// </remarks>
+    /// <inheritdoc />
     public async Task SetActiveAsync(int scheduleId, CancellationToken ct = default)
     {
         var all = await _uow.Schedules.GetAllAsync(ct).ConfigureAwait(false);
         var target = all.FirstOrDefault(s => s.Id == scheduleId)
             ?? throw new InvalidOperationException($"Jadval topilmadi (ID: {scheduleId}).");
 
-        var changed = false;
-        foreach (var schedule in all)
+        if (target.IsActive && all.Count(s => s.IsActive) == 1)
         {
-            var shouldBeActive = schedule.Id == target.Id;
-            if (schedule.IsActive == shouldBeActive)
+            return;
+        }
+
+        await _uow.ExecuteInTransactionAsync(async token =>
+        {
+            // 1-qadam: hamma faollik o'chiriladi (maqsad jadval ham).
+            foreach (var schedule in all.Where(s => s.IsActive))
             {
-                continue;
+                schedule.IsActive = false;
+                await _uow.Schedules.UpdateAsync(schedule, token).ConfigureAwait(false);
             }
 
-            schedule.IsActive = shouldBeActive;
-            await _uow.Schedules.UpdateAsync(schedule, ct).ConfigureAwait(false);
-            changed = true;
-        }
-
-        if (changed)
-        {
-            await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
-        }
+            // 2-qadam: faqat bittasi yoqiladi.
+            target.IsActive = true;
+            await _uow.Schedules.UpdateAsync(target, token).ConfigureAwait(false);
+        }, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

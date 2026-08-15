@@ -39,6 +39,24 @@ public interface IAvailabilityService
     Task<IReadOnlyList<TeacherDayAvailability>> GetLessonAvailabilityAsync(
         int teacherId, CancellationToken ct = default);
 
+    /// <summary>
+    /// <b>Ommaviy variant:</b> BARCHA o'qituvchilar uchun bandlikni <b>bitta</b> o'qishda
+    /// qaytaradi (o'qituvchi Id → kunlar ro'yxati).
+    /// </summary>
+    /// <remarks>
+    /// Ilgari UI har bir o'qituvchi uchun <see cref="GetLessonAvailabilityAsync"/> ni
+    /// alohida chaqirardi: 40 ta o'qituvchi = 40 ta so'rov to'plami (har biri 3 ta
+    /// to'liq <c>SELECT</c>). Bu yerda ish kunlari, dars soatlari va oraliqlar
+    /// bir marta o'qiladi va o'girish xotirada bajariladi.
+    /// <para>
+    /// Cheklovi yo'q o'qituvchi ham natijada bo'ladi (barcha kunlar
+    /// <c>HasRestriction = false</c> bilan) — chaqiruvchi <c>TryGetValue</c> ni
+    /// tekshirishga majbur bo'lmasligi uchun.
+    /// </para>
+    /// </remarks>
+    Task<IReadOnlyDictionary<int, IReadOnlyList<TeacherDayAvailability>>> GetLessonAvailabilityForAllAsync(
+        CancellationToken ct = default);
+
     /// <summary>Berilgan kunlar bo'yicha bandlikni to'liq ALMASHTIRADI.</summary>
     Task SaveLessonAvailabilityAsync(
         int teacherId, IEnumerable<TeacherDayAvailability> days, CancellationToken ct = default);
@@ -129,24 +147,69 @@ public sealed class AvailabilityService : IAvailabilityService
             .Where(a => a.TeacherId == teacherId)
             .ToList();
 
-        var byDay = availabilities
+        return Convert(availabilities, ActiveDays(workDays), slots);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<int, IReadOnlyList<TeacherDayAvailability>>>
+        GetLessonAvailabilityForAllAsync(CancellationToken ct = default)
+    {
+        // BITTA o'qish to'plami — o'qituvchilar soniga bog'liq emas.
+        var teachers = await _uow.Teachers.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var workDays = await _uow.WorkDays.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var slots = (await _uow.LessonSlots.GetAllReadOnlyAsync(ct).ConfigureAwait(false))
+            .OrderBy(s => s.LessonNumber)
+            .ToList();
+        var availabilities = await _uow.Availabilities.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+
+        var days = ActiveDays(workDays);
+        var byTeacher = availabilities
+            .GroupBy(a => a.TeacherId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<TeacherAvailability>)g.ToList());
+
+        var result = new Dictionary<int, IReadOnlyList<TeacherDayAvailability>>(teachers.Count);
+        foreach (var teacher in teachers)
+        {
+            var items = byTeacher.TryGetValue(teacher.Id, out var list)
+                ? list
+                : Array.Empty<TeacherAvailability>();
+
+            result[teacher.Id] = Convert(items, days, slots);
+        }
+
+        return result;
+    }
+
+    /// <summary>Faol ish kunlari, kun tartibida.</summary>
+    private static List<WorkDay> ActiveDays(IEnumerable<WorkDay> workDays) =>
+        workDays.Where(d => d.IsActive).OrderBy(d => (int)d.DayOfWeek).ToList();
+
+    /// <summary>
+    /// Vaqt oraliqlarini dars soati raqamlariga o'giradi. Qoida
+    /// <see cref="LessonAvailabilityRules"/> dan olinadi — validatsiya bilan bir manbadan.
+    /// </summary>
+    private static IReadOnlyList<TeacherDayAvailability> Convert(
+        IReadOnlyList<TeacherAvailability> items,
+        IReadOnlyList<WorkDay> activeDays,
+        IReadOnlyList<LessonSlot> slots)
+    {
+        var byDay = items
             .GroupBy(a => a.DayOfWeek)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var result = new List<TeacherDayAvailability>();
+        var result = new List<TeacherDayAvailability>(activeDays.Count);
 
-        foreach (var day in workDays.Where(d => d.IsActive).OrderBy(d => (int)d.DayOfWeek))
+        foreach (var day in activeDays)
         {
-            if (!byDay.TryGetValue(day.DayOfWeek, out var items) || items.Count == 0)
+            if (!byDay.TryGetValue(day.DayOfWeek, out var dayItems) || dayItems.Count == 0)
             {
                 // Yozuv yo'q — cheklov ham yo'q.
                 result.Add(new TeacherDayAvailability(day.DayOfWeek, false, Array.Empty<int>()));
                 continue;
             }
 
-            // CONTRACT 2.2 §8 mantiqi — validatsiya bilan bir xil manbadan (LessonAvailabilityRules).
             var allowed = slots
-                .Where(s => LessonAvailabilityRules.IsAllowed(items, s.StartTime, s.EndTime))
+                .Where(s => LessonAvailabilityRules.IsAllowed(dayItems, s.StartTime, s.EndTime))
                 .Select(s => s.LessonNumber)
                 .ToList();
 

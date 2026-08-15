@@ -12,6 +12,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DarsJadvali.Domain\DarsJadvali.Domain.csproj" />
+    <!-- Sof algoritm yadrosi (EF'ni bilmaydi). Mapper AYNAN shu qatlamda turadi (00 §6.3):
+         Domain va Scheduling ni bir vaqtda ko'radigan yagona qatlam — Application. -->
+    <ProjectReference Include="..\DarsJadvali.Scheduling\DarsJadvali.Scheduling.csproj" />
   </ItemGroup>
 
 </Project>

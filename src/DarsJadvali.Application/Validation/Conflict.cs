@@ -42,6 +42,12 @@ public static class ConflictCodes
 
     /// <summary>O'qituvchi faol emas.</summary>
     public const string TeacherInactive = "TEACHER_INACTIVE";
+
+    /// <summary>
+    /// Bir sinfda TURLI bo'linishlarning guruhlari bir slotda ("1-guruh" + "O'g'illar").
+    /// DB unikal indeksi buni ushlay olmaydi — faqat Application darajasida (00 §2.7, §10.3).
+    /// </summary>
+    public const string GroupDivisionOverlap = "GROUP_DIVISION_OVERLAP";
 }
 
 /// <summary>Bitta konflikt.</summary>

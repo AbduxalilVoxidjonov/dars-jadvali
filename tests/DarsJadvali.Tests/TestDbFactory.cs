@@ -1,5 +1,6 @@
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Application.DependencyInjection;
+using DarsJadvali.Infrastructure.DependencyInjection;
 using DarsJadvali.Domain.Entities;
 using DarsJadvali.Domain.Enums;
 using DarsJadvali.Infrastructure.Persistence;
@@ -35,6 +36,10 @@ public sealed class TestDbFactory : IDisposable
         services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+
+        // Kartochka (v2) generatsiyasining ma'lumot qatlami: bandlik projektori va
+        // qamrovi aniq o'qish/yozish servisi (IScheduleGenerationService shularga tayanadi).
+        services.AddSchedulingPersistence();
 
         // Application qatlami — kontrakt 2.5 bo'yicha barcha servis, validator va generator.
         services.AddApplication();

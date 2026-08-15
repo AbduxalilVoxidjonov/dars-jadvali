@@ -2,8 +2,12 @@ using DarsJadvali.Domain.Entities;
 
 namespace DarsJadvali.Application.Abstractions;
 
-/// <summary>Barcha repozitoriylarni birlashtiruvchi ish birligi.</summary>
-public interface IUnitOfWork
+/// <summary>
+/// Barcha repozitoriylarni birlashtiruvchi ish birligi.
+/// Tranzaksiya va <c>SaveChangesAsync</c> <see cref="ITransactionalUnitOfWork"/> dan meros olinadi
+/// (00 §10.8 TODO-2: interfeys Infrastructure'dan shu yerga ko'chirildi).
+/// </summary>
+public interface IUnitOfWork : ITransactionalUnitOfWork
 {
     /// <summary>O'qituvchilar.</summary>
     IRepository<Teacher> Teachers { get; }
@@ -34,7 +38,4 @@ public interface IUnitOfWork
 
     /// <summary>Dars soatlari (vaqt oraliqlari).</summary>
     IRepository<LessonSlot> LessonSlots { get; }
-
-    /// <summary>O'zgarishlarni saqlaydi.</summary>
-    Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

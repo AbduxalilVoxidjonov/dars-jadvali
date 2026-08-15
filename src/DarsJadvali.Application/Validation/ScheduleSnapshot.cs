@@ -9,7 +9,18 @@ namespace DarsJadvali.Application.Validation;
 /// Jadval tekshiruvi uchun kerak bo'ladigan barcha ma'lumotning xotiradagi nusxasi.
 /// Bazadan bir marta yuklanadi, keyin barcha tekshiruvlar xotirada bajariladi.
 /// </summary>
-internal sealed class ScheduleSnapshot
+/// <remarks>
+/// <b>PUBLIC (faqat o'qish uchun)</b>. Ilgari <c>internal</c> edi va Desktop uni
+/// ishlata olmagani uchun <c>TimetableBoard.Evaluate</c> da qoidalar TAKRORLANGAN edi.
+/// Endi prezentatsiya qatlami nusxani <see cref="IScheduleSnapshotProvider"/> orqali
+/// oladi va <see cref="ScheduleValidator.Evaluate"/> bilan baholaydi — qoida yagona manbada.
+/// <para>
+/// Nusxani <b>o'zgartiradigan</b> a'zolar (<c>Add</c>, <c>ClearEntries</c>) ataylab
+/// <c>internal</c> qoldirildi: ular faqat generatorning ichki "nima bo'lardi-agar"
+/// siklida ishlatiladi, tashqi chaqiruvchi uchun nusxa o'zgarmas.
+/// </para>
+/// </remarks>
+public sealed class ScheduleSnapshot
 {
     private readonly Dictionary<int, Teacher> _teachers;
     private readonly Dictionary<int, Subject> _subjects;
@@ -110,6 +121,68 @@ internal sealed class ScheduleSnapshot
     public IReadOnlyList<WorkDay> ActiveWorkDays =>
         _workDays.Values.Where(w => w.IsActive).OrderBy(w => (int)w.DayOfWeek).ToList();
 
+    /// <summary>Barcha o'qituvchilar (Id tartibida).</summary>
+    public IReadOnlyList<Teacher> Teachers => _teachers.Values.OrderBy(t => t.Id).ToList();
+
+    /// <summary>Barcha fanlar (Id tartibida).</summary>
+    public IReadOnlyList<Subject> Subjects => _subjects.Values.OrderBy(s => s.Id).ToList();
+
+    /// <summary>Barcha sinflar (Id tartibida).</summary>
+    public IReadOnlyList<ClassGroup> ClassGroups => _classGroups.Values.OrderBy(c => c.Id).ToList();
+
+    /// <summary>Dars soatlari (raqam tartibida).</summary>
+    public IReadOnlyList<LessonSlot> LessonSlots =>
+        _slots.Values.OrderBy(s => s.LessonNumber).ToList();
+
+    /// <summary>Shu kundagi eng katta dars raqami (kun faol bo'lmasa <c>0</c>).</summary>
+    public int MaxLessonNumberOf(WeekDay day) =>
+        _workDays.TryGetValue(day, out var w) && w.IsActive ? w.MaxLessonsPerDay : 0;
+
+    /// <summary>Kun faol ish kunimi.</summary>
+    public bool IsActiveDay(WeekDay day) => _workDays.TryGetValue(day, out var w) && w.IsActive;
+
+    /// <summary>
+    /// O'qituvchi shu (kun, dars raqami) da ishlay oladimi — <c>TEACHER_UNAVAILABLE</c>
+    /// qoidasining dars soati o'lchovidagi ko'rinishi.
+    /// </summary>
+    /// <remarks>
+    /// Prezentatsiya qatlami (drag paytidagi tez baholash) AYNAN shu metodga tayanishi
+    /// kerak: qoida <see cref="LessonAvailabilityRules"/> dan olinadi, takrorlanmaydi.
+    /// Dars soatining real vaqti noma'lum bo'lsa cheklov yo'q deb hisoblanadi.
+    /// </remarks>
+    public bool IsTeacherAvailableAt(int teacherId, WeekDay day, int lessonNumber)
+    {
+        if (!_slots.TryGetValue(lessonNumber, out var slot)) return true;
+        if (!_availabilities.TryGetValue((teacherId, day), out var items) || items.Count == 0) return true;
+
+        return LessonAvailabilityRules.IsAllowed(items, slot.StartTime, slot.EndTime);
+    }
+
+    /// <summary>
+    /// Barcha o'qituvchilar uchun "ishlamaydigan" (o'qituvchi, kun, soat) uchliklari.
+    /// Desktop shu ro'yxatdan o'z keshini quradi — bazaga 40 ta so'rov ketmaydi.
+    /// </summary>
+    public IReadOnlyList<(int TeacherId, WeekDay Day, int LessonNumber)> BlockedTeacherSlots()
+    {
+        var result = new List<(int, WeekDay, int)>();
+
+        foreach (var teacherId in _teachers.Keys)
+        {
+            foreach (var workDay in _workDays.Values.Where(w => w.IsActive))
+            {
+                foreach (var slot in _slots.Values)
+                {
+                    if (!IsTeacherAvailableAt(teacherId, workDay.DayOfWeek, slot.LessonNumber))
+                    {
+                        result.Add((teacherId, workDay.DayOfWeek, slot.LessonNumber));
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// Bazadan barcha kerakli ma'lumotni bir marta yuklaydi.
     /// Dars yozuvlari FAQAT bitta jadvaldan olinadi (<paramref name="scheduleId"/>,
@@ -123,24 +196,27 @@ internal sealed class ScheduleSnapshot
         var targetScheduleId = await ActiveScheduleResolver
             .ResolveIdAsync(uow, scheduleId, ct).ConfigureAwait(false);
 
-        var teachers = await uow.Teachers.GetAllAsync(ct).ConfigureAwait(false);
-        var subjects = await uow.Subjects.GetAllAsync(ct).ConfigureAwait(false);
-        var classGroups = await uow.ClassGroups.GetAllAsync(ct).ConfigureAwait(false);
-        var assignments = await uow.Assignments.GetAllAsync(ct).ConfigureAwait(false);
-        var workDays = await uow.WorkDays.GetAllAsync(ct).ConfigureAwait(false);
-        var availabilities = await uow.Availabilities.GetAllAsync(ct).ConfigureAwait(false);
-        var slots = await uow.LessonSlots.GetAllAsync(ct).ConfigureAwait(false);
-        var allEntries = await uow.ScheduleEntries.GetAllAsync(ct).ConfigureAwait(false);
+        // Nusxa FAQAT o'qish uchun — barcha so'rovlar kuzatuvsiz (05-audit K-07).
+        var teachers = await uow.Teachers.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var subjects = await uow.Subjects.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var classGroups = await uow.ClassGroups.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var assignments = await uow.Assignments.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var workDays = await uow.WorkDays.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var availabilities = await uow.Availabilities.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
+        var slots = await uow.LessonSlots.GetAllReadOnlyAsync(ct).ConfigureAwait(false);
 
         // Boshqa jadvallardagi (boshqa yildagi yoki boshqa variantdagi) yozuvlar butunlay chetlab o'tiladi.
-        var entries = allEntries.Where(e => e.ScheduleId == targetScheduleId).ToList();
+        // 05-audit K-07/K-19: ilgari BARCHA yillarning yozuvlari o'qilib, keyin xotirada
+        // filtrlanardi. Endi shart SQL'ga tushadi va natija kuzatilmaydi (AsNoTracking).
+        var entries = await uow.ScheduleEntries
+            .GetWhereAsync(e => e.ScheduleId == targetScheduleId, ct).ConfigureAwait(false);
 
         return new ScheduleSnapshot(
             targetScheduleId, teachers, subjects, classGroups, assignments, workDays, availabilities, slots, entries);
     }
 
-    /// <summary>Xotiradagi jadvalga yozuv qo'shadi (indekslar bilan).</summary>
-    public void Add(ScheduleEntry entry)
+    /// <summary>Xotiradagi jadvalga yozuv qo'shadi (indekslar bilan). Faqat ichki foydalanish.</summary>
+    internal void Add(ScheduleEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
@@ -150,13 +226,57 @@ internal sealed class ScheduleSnapshot
         Index(_byTriple, (entry.TeacherId, entry.SubjectId, entry.ClassGroupId), entry);
     }
 
-    /// <summary>Xotiradagi jadvalni butunlay tozalaydi.</summary>
-    public void ClearEntries()
+    /// <summary>Xotiradagi jadvalni butunlay tozalaydi. Faqat ichki foydalanish.</summary>
+    internal void ClearEntries()
     {
         _entries.Clear();
         _bySlot.Clear();
         _byClassDay.Clear();
         _byTriple.Clear();
+    }
+
+    /// <summary>
+    /// Loyihani xotiradagi nusxaga qo'llaydi: shu Id li eski yozuv olib tashlanadi va
+    /// yangi holat qo'yiladi. Ommaviy joylashtirishda (<c>PlaceManyAsync</c>) keyingi
+    /// loyihalar oldingilarini KO'RISHI uchun kerak.
+    /// </summary>
+    internal void Apply(ScheduleEntryDraft draft)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+
+        if (draft.Id.HasValue)
+        {
+            _entries.RemoveAll(e => e.Id == draft.Id.Value);
+        }
+
+        _entries.Add(new ScheduleEntry
+        {
+            Id = draft.Id ?? 0,
+            ScheduleId = ScheduleId,
+            ClassGroupId = draft.ClassGroupId,
+            SubjectId = draft.SubjectId,
+            TeacherId = draft.TeacherId,
+            DayOfWeek = draft.DayOfWeek,
+            LessonNumber = draft.LessonNumber,
+            RoomNumber = draft.RoomNumber,
+        });
+
+        Reindex();
+    }
+
+    /// <summary>Qidiruv indekslarini <see cref="_entries"/> dan qaytadan quradi.</summary>
+    private void Reindex()
+    {
+        _bySlot.Clear();
+        _byClassDay.Clear();
+        _byTriple.Clear();
+
+        foreach (var entry in _entries)
+        {
+            Index(_bySlot, (entry.DayOfWeek, entry.LessonNumber), entry);
+            Index(_byClassDay, (entry.ClassGroupId, entry.DayOfWeek), entry);
+            Index(_byTriple, (entry.TeacherId, entry.SubjectId, entry.ClassGroupId), entry);
+        }
     }
 
     /// <summary>Loyihani barcha qoidalar bo'yicha tekshiradi (CONTRACT 2.2 tartibida).</summary>

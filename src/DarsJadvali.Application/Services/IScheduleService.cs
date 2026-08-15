@@ -11,6 +11,18 @@ namespace DarsJadvali.Application.Services;
 /// <param name="Validation">Validatsiya natijasi.</param>
 public sealed record PlacementResult(bool Placed, ScheduleEntry? Entry, ValidationResult Validation);
 
+/// <summary>Ommaviy joylashtirish natijasi ("hammasi yoki hech narsa").</summary>
+/// <param name="Applied">Tranzaksiya commit bo'ldimi (barchasi yozildimi).</param>
+/// <param name="Results">Har bir loyiha uchun natija — kirish bilan bir xil tartibda.</param>
+public sealed record BulkPlacementResult(bool Applied, IReadOnlyList<PlacementResult> Results)
+{
+    /// <summary>Rad etilgan loyihalarning barcha konfliktlari.</summary>
+    public IReadOnlyList<Conflict> Rejections => Results
+        .Where(r => !r.Placed)
+        .SelectMany(r => r.Validation.Conflicts)
+        .ToList();
+}
+
 /// <summary>
 /// Dars yozuvlari bilan ishlash servisi.
 /// Barcha amallar bitta dars jadvali (varianti) doirasida bajariladi:
@@ -44,6 +56,26 @@ public interface IScheduleService
     /// force=true bo'lsa Warning'larni e'tiborsiz qoldiradi (Error'ni emas).
     /// </summary>
     Task<PlacementResult> PlaceAsync(ScheduleEntryDraft draft, bool force = false, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bir nechta darsni <b>bitta tranzaksiyada</b> joylashtiradi: bittasi ham qabul
+    /// qilinmasa hech narsa yozilmaydi ("hammasi yoki hech narsa").
+    /// </summary>
+    /// <remarks>
+    /// <b>Nima uchun kerak.</b> Undo/redo dagi <c>CompositeCommand</c> N ta harakatni
+    /// qaytarayotganda <see cref="PlaceAsync"/> ni N marta chaqirardi — N ta alohida
+    /// <c>SaveChanges</c> va N ta to'liq validatsiya. O'rtada xato chiqsa jadval
+    /// <b>yarim qaytarilgan</b> holatda qolardi. Bu yerda hammasi
+    /// <c>IUnitOfWork.ExecuteInTransactionAsync</c> ichida bajariladi.
+    /// <para>
+    /// Natija ro'yxati kirish bilan <b>bir xil tartibda</b> qaytadi. Biror loyiha rad
+    /// etilsa tranzaksiya qaytariladi, lekin natijada har bir loyihaning sababi ko'rinadi.
+    /// </para>
+    /// </remarks>
+    /// <param name="drafts">Joylashtiriladigan loyihalar.</param>
+    /// <param name="force">Ogohlantirishlarni e'tiborsiz qoldirish (Error'ni emas).</param>
+    Task<BulkPlacementResult> PlaceManyAsync(
+        IReadOnlyList<ScheduleEntryDraft> drafts, bool force = false, CancellationToken ct = default);
 
     /// <summary>Mavjud darsni boshqa kun/soatga ko'chiradi (o'z jadvali ichida).</summary>
     Task<PlacementResult> MoveAsync(int entryId, WeekDay newDay, int newLessonNumber, bool force = false, CancellationToken ct = default);
@@ -123,7 +155,8 @@ public sealed class ScheduleService : IScheduleService
         var validation = await _validator.ValidateAsync(draft, ct).ConfigureAwait(false);
 
         // Error har doim to'sadi; Warning faqat force=false bo'lganda to'sadi.
-        if (!validation.IsValid || (validation.HasWarnings && !force))
+        // Qoida generator bilan AYNAN bir manbadan olinadi (05-audit K-06).
+        if (!SchedulePlacementPolicy.IsAcceptable(validation, force))
         {
             return new PlacementResult(false, null, validation);
         }
@@ -168,6 +201,107 @@ public sealed class ScheduleService : IScheduleService
 
         await _uow.SaveChangesAsync(ct).ConfigureAwait(false);
         return new PlacementResult(true, entry, validation);
+    }
+
+    /// <inheritdoc />
+    public async Task<BulkPlacementResult> PlaceManyAsync(
+        IReadOnlyList<ScheduleEntryDraft> drafts, bool force = false, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(drafts);
+
+        if (drafts.Count == 0)
+        {
+            return new BulkPlacementResult(true, Array.Empty<PlacementResult>());
+        }
+
+        var scheduleId = await ActiveScheduleResolver
+            .ResolveIdAsync(_uow, drafts[0].ScheduleId, ct).ConfigureAwait(false);
+
+        // Nusxa BIR MARTA yuklanadi: N ta loyiha uchun N ta to'liq o'qish qilinmaydi.
+        var snapshot = await ScheduleSnapshot.LoadAsync(_uow, scheduleId, ct).ConfigureAwait(false);
+
+        var results = new List<PlacementResult>(drafts.Count);
+        var accepted = new List<ScheduleEntryDraft>(drafts.Count);
+
+        foreach (var raw in drafts)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var draft = raw with { ScheduleId = scheduleId };
+            var validation = ScheduleValidator.Evaluate(draft, snapshot);
+
+            if (!SchedulePlacementPolicy.IsAcceptable(validation, force))
+            {
+                results.Add(new PlacementResult(false, null, validation));
+                continue;
+            }
+
+            // Keyingi loyihalar shu qarorni KO'RADI (aks holda ikkitasi bir slotga tushardi).
+            snapshot.Apply(draft);
+            accepted.Add(draft);
+            results.Add(new PlacementResult(true, null, validation));
+        }
+
+        // Bittasi ham rad etilsa — hech narsa yozilmaydi ("hammasi yoki hech narsa").
+        if (results.Any(r => !r.Placed))
+        {
+            return new BulkPlacementResult(false, results);
+        }
+
+        var entries = await _uow.ExecuteInTransactionAsync(async token =>
+        {
+            var written = new List<ScheduleEntry>(accepted.Count);
+            foreach (var draft in accepted)
+            {
+                written.Add(await WriteAsync(draft, scheduleId, token).ConfigureAwait(false));
+            }
+
+            return written;
+        }, ct).ConfigureAwait(false);
+
+        for (var i = 0; i < results.Count; i++)
+        {
+            results[i] = results[i] with { Entry = entries[i] };
+        }
+
+        return new BulkPlacementResult(true, results);
+    }
+
+    /// <summary>
+    /// Loyihani entity'ga yozadi (yangi yoki mavjudini yangilaydi). <c>SaveChanges</c>
+    /// repozitoriy ichida bajariladi, lekin ochiq tranzaksiya bo'lsa u commit qilmaydi.
+    /// </summary>
+    private async Task<ScheduleEntry> WriteAsync(
+        ScheduleEntryDraft draft, int scheduleId, CancellationToken ct)
+    {
+        if (draft.Id.HasValue)
+        {
+            var existing = await _uow.ScheduleEntries.GetByIdAsync(draft.Id.Value, ct).ConfigureAwait(false)
+                ?? throw new InvalidOperationException(
+                    $"Ko'chiriladigan dars topilmadi (ID: {draft.Id.Value}).");
+
+            existing.ScheduleId = scheduleId;
+            existing.ClassGroupId = draft.ClassGroupId;
+            existing.SubjectId = draft.SubjectId;
+            existing.TeacherId = draft.TeacherId;
+            existing.DayOfWeek = draft.DayOfWeek;
+            existing.LessonNumber = draft.LessonNumber;
+            existing.RoomNumber = draft.RoomNumber;
+
+            await _uow.ScheduleEntries.UpdateAsync(existing, ct).ConfigureAwait(false);
+            return existing;
+        }
+
+        return await _uow.ScheduleEntries.AddAsync(new ScheduleEntry
+        {
+            ScheduleId = scheduleId,
+            ClassGroupId = draft.ClassGroupId,
+            SubjectId = draft.SubjectId,
+            TeacherId = draft.TeacherId,
+            DayOfWeek = draft.DayOfWeek,
+            LessonNumber = draft.LessonNumber,
+            RoomNumber = draft.RoomNumber,
+        }, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

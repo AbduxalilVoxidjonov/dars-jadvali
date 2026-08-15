@@ -158,10 +158,16 @@ public class RepositoryTests
         Assert.Equal(4, assignment.WeeklyHoursCount);
     }
 
+    /// <summary>
+    /// 00 §10.8 (4-band): eski FK'lar <c>Cascade</c> dan <c>Restrict</c> ga o'tdi.
+    /// Ilgari bitta o'qituvchini o'chirish uning BUTUN jadvalini jimgina o'chirib
+    /// yuborardi — foydalanuvchi ma'lumot yo'qolganini bilmasdi. Endi amal RAD ETILADI
+    /// va jadval joyida qoladi.
+    /// </summary>
     [Fact]
-    public async Task Oqituvchi_ochirilsa_bogliq_yozuvlar_ham_ochadi()
+    public async Task Bogliq_yozuvlari_bor_oqituvchini_ochirib_bolmaydi()
     {
-        // Arrange — Cascade delete tekshiruvi (CONTRACT §3).
+        // Arrange
         using var db = new TestDbFactory();
         db.SeedDefaults();
         var teacher = db.AddTeacher();
@@ -172,12 +178,34 @@ public class RepositoryTests
 
         var uow = db.Get<IUnitOfWork>();
 
+        // Act + Assert — o'chirish to'siladi.
+        await Assert.ThrowsAnyAsync<Exception>(() => uow.Teachers.DeleteAsync(teacher.Id));
+
+        // Eng muhimi: dars yozuvi ham, biriktirma ham JOYIDA qoladi.
+        Assert.Single(await db.GetFromNewScope<IUnitOfWork>().ScheduleEntries.GetAllAsync());
+        Assert.Single(await db.GetFromNewScope<IUnitOfWork>().Assignments.GetAllAsync());
+        Assert.Single(await db.GetFromNewScope<IUnitOfWork>().Teachers.GetAllAsync());
+    }
+
+    /// <summary>
+    /// Bog'liq yozuvlari bo'lmagan o'qituvchi odatdagidek o'chadi — <c>Restrict</c>
+    /// faqat haqiqiy ma'lumot yo'qolishini to'sadi.
+    /// </summary>
+    [Fact]
+    public async Task Bogliq_yozuvsiz_oqituvchi_ochadi()
+    {
+        // Arrange
+        using var db = new TestDbFactory();
+        db.SeedDefaults();
+        var teacher = db.AddTeacher();
+
+        var uow = db.Get<IUnitOfWork>();
+
         // Act
         await uow.Teachers.DeleteAsync(teacher.Id);
 
         // Assert
-        Assert.Empty(await db.GetFromNewScope<IUnitOfWork>().ScheduleEntries.GetAllAsync());
-        Assert.Empty(await db.GetFromNewScope<IUnitOfWork>().Assignments.GetAllAsync());
+        Assert.Empty(await db.GetFromNewScope<IUnitOfWork>().Teachers.GetAllAsync());
     }
 
     [Fact]

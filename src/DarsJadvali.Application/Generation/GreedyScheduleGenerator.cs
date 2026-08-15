@@ -11,6 +11,24 @@ namespace DarsJadvali.Application.Generation;
 /// tartibida oladi va har bir soat uchun validatsiyadan o'tgan birinchi bo'sh joyni band qiladi.
 /// Barcha tekshiruvlar xotirada bajariladi — bazaga faqat oxirida yoziladi.
 /// </summary>
+/// <remarks>
+/// <b>ESKIRGAN.</b> O'rniga <see cref="Scheduling.IScheduleGenerationService"/> ishlatiladi.
+/// <para>
+/// <b>Nega o'chirilmadi:</b> bu generator eski <c>ScheduleEntry</c> modeliga yozadi va uni
+/// hozir <c>Desktop</c>, <c>Web</c> hamda <c>UI</c> qatlamlari <see cref="IScheduleGenerator"/>
+/// orqali chaqiradi. Ularni <c>Lesson</c>/<c>Card</c> modeliga ko'chirish alohida vazifa
+/// (00 §10.8 TODO-1). O'chirish shu qatlamlarni darhol sindirardi, shuning uchun sinf
+/// <c>[Obsolete]</c> deb belgilandi va yangi API yonma-yon qo'shildi.
+/// </para>
+/// <para>
+/// Bu bosqichda unda BITTA xatti-harakat o'zgardi: ogohlantirishli (Warning) slot endi
+/// zaxira variant sifatida QABUL QILINMAYDI — 05-audit K-06 dagi "generator qabul qiladi,
+/// <c>PlaceAsync</c> rad etadi" ziddiyati shu bilan yopildi. Yagona qaror nuqtasi —
+/// <see cref="SchedulePlacementPolicy"/>.
+/// </para>
+/// </remarks>
+[Obsolete("Eskirgan: yangi kartochka asosidagi IScheduleGenerationService ishlatilsin. " +
+          "Bu generator eski ScheduleEntry modeli uchun vaqtincha saqlanadi.")]
 public sealed class GreedyScheduleGenerator : IScheduleGenerator
 {
     private readonly IUnitOfWork _uow;
@@ -189,8 +207,6 @@ public sealed class GreedyScheduleGenerator : IScheduleGenerator
         string? room,
         int scheduleId)
     {
-        ScheduleEntryDraft? fallback = null;
-
         foreach (var day in workDays)
         {
             for (var lesson = 1; lesson <= day.MaxLessonsPerDay; lesson++)
@@ -205,21 +221,18 @@ public sealed class GreedyScheduleGenerator : IScheduleGenerator
                     room,
                     scheduleId);
 
+                // K-06: siyosat PlaceAsync bilan AYNAN bir xil — ogohlantirishli slot
+                // ham qabul qilinmaydi (aks holda generator qo'lda ko'chirib bo'lmaydigan
+                // dars yaratardi).
                 var conflicts = snapshot.Validate(draft);
-                if (conflicts.Count == 0)
+                if (SchedulePlacementPolicy.IsAcceptable(conflicts))
                 {
                     return ToEntry(draft);
-                }
-
-                // Faqat ogohlantirish bo'lsa — zaxira variant sifatida saqlaymiz.
-                if (fallback is null && conflicts.All(c => c.Severity == ConflictSeverity.Warning))
-                {
-                    fallback = draft;
                 }
             }
         }
 
-        return fallback is null ? null : ToEntry(fallback);
+        return null;
     }
 
     private static ScheduleEntry ToEntry(ScheduleEntryDraft draft) => new()
