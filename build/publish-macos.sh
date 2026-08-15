@@ -264,19 +264,43 @@ Tekshiring: .csproj da <AssemblyName>$APP_NAME</AssemblyName> turibdimi?"
         qadam "[$RID] 6/6  DMG obrazi yasalmoqda..."
         DMG_PATH="$OUTPUT/$APP_NAME-$VERSION-macos-$a.dmg"
         rm -f "$DMG_PATH"
+
         # DIQQAT: -srcfolder ga to'g'ridan-to'g'ri .app berilsa, hdiutil bundle'ni
         # oddiy papka deb hisoblab, uning ICHIDAGI fayllarni (Contents/) DMG
-        # ildiziga chiqarib yuboradi. Shuning uchun .app turgan PAPKANI beramiz —
-        # o'sha papkada faqat .app bor, ya'ni DMG ildizida DarsJadvali.app ko'rinadi.
+        # ildiziga chiqarib yuboradi. Shuning uchun har doim PAPKA beriladi.
+        #
+        # Bu yerda alohida vaqtinchalik "stage" papka yasaymiz va unga IKKI narsa
+        # qo'yamiz:
+        #   1. DarsJadvali.app  (nusxasi)
+        #   2. Applications     ->  /Applications ga symlink
+        # Natijada DMG ochilganda odatiy macOS o'rnatish oynasi chiqadi:
+        # chapda ilova, o'ngda Applications papkasi — foydalanuvchi ilovani
+        # shunchaki o'sha papka ustiga sudrab tashlaydi, qidirib yurmaydi.
+        DMG_STAGE="$OUTPUT/.dmgstage-$RID"
+        rm -rf "$DMG_STAGE"
+        mkdir -p "$DMG_STAGE"
+
+        # `ditto` — imzo, ruxsatlar va kengaytirilgan atributlarni buzmay ko'chiradi
+        # (oddiy `cp -R` ad-hoc imzoni shikastlashi mumkin).
+        if ! ditto "$APP_DIR" "$DMG_STAGE/$APP_NAME.app"; then
+            rm -rf "$DMG_STAGE"
+            xato "[$RID] .app ni DMG uchun ko'chirib bo'lmadi."
+        fi
+        ln -s /Applications "$DMG_STAGE/Applications"
+
         if ! hdiutil create \
                 -volname "$VOLUME_NAME" \
-                -srcfolder "$OUTPUT/$RID" \
+                -srcfolder "$DMG_STAGE" \
                 -ov -format UDZO \
                 "$DMG_PATH" >/dev/null; then
+            rm -rf "$DMG_STAGE"
             xato "[$RID] DMG yasash muvaffaqiyatsiz tugadi."
         fi
+        rm -rf "$DMG_STAGE"
+
         DMG_SIZE="$(hajm "$DMG_PATH")"
         muvaffaq "DMG tayyor: $DMG_PATH ($DMG_SIZE)"
+        muvaffaq "DMG ichida: $APP_NAME.app  va  Applications yorlig'i"
     else
         kulrang "[$RID] 6/6  DMG o'tkazib yuborildi (--no-dmg)."
     fi
@@ -327,7 +351,8 @@ xabar "${C_YELLOW} Dastur Apple sertifikati bilan imzolanmagan (sertifikat pulli
 xabar " Shuning uchun BIRINCHI marta ochishda quyidagicha qilish SHART:${C_RESET}"
 xabar ""
 xabar "   1. DMG faylni ikki marta bosib oching."
-xabar "   2. Ichidagi \"$APP_NAME.app\" ni Applications (Dasturlar) papkasiga tashlang."
+xabar "   2. Chiqqan oynada \"$APP_NAME\" ilovasini yonidagi \"Applications\""
+xabar "      (Dasturlar) papkasi ustiga sudrab tashlang."
 xabar "   3. Finder'da Applications papkasini oching."
 xabar "   4. \"$APP_NAME\" ustiga ${C_GREEN}O'NG TUGMA${C_RESET} bosing -> ${C_GREEN}Open${C_RESET} (Ochish) ni tanlang."
 xabar "   5. Chiqqan oynada yana ${C_GREEN}Open${C_RESET} tugmasini bosing."
