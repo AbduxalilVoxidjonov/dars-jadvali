@@ -184,8 +184,16 @@ Standart holatda **x64 va x86** ikkalasi self-contained rejimda yig'iladi.
 ```powershell
 .\build\publish-windows.ps1 -Runtime win-x64                      # faqat 64-bit
 .\build\publish-windows.ps1 -Runtime win-x86                      # faqat 32-bit
-.\build\publish-windows.ps1 -SelfContained $false                 # kichik hajm, .NET alohida
+.\build\publish-windows.ps1 -FrameworkDependent                   # kichik hajm, .NET alohida
 ```
+
+> **`-SelfContained` parametri YO'Q.** Avval u `[bool]` edi, lekin PowerShell
+> `-SelfContained $false` ni ham `$true` deb qabul qilib, foydalanuvchiga jimgina
+> self-contained versiyani berardi. Endi standart xatti-harakat — **doim
+> self-contained**; kichik hajmli versiya kerak bo'lsa `-FrameworkDependent`
+> **bayrog'ini** (switch, qiymatsiz) qo'shing.
+> Skriptning haqiqiy parametrlari: `-Runtime`, `-FrameworkDependent`, `-Output`
+> (`build/publish-windows.ps1:33-40`).
 
 Skript ishga tushmasa:
 
@@ -219,10 +227,10 @@ Foydalanuvchi qaysi ekanini bilmasa:
 
 ### .NET talabi — WPF versiyasidan MUHIM farq
 
-| Rejim | Foydalanuvchida nima kerak |
-|---|---|
-| `-SelfContained $true` (standart) | **Hech narsa.** ZIP ni ochib `.exe` ni bosish kifoya. |
-| `-SelfContained $false` | **.NET 8 Runtime** |
+| Rejim | Buyruq | Foydalanuvchida nima kerak |
+|---|---|---|
+| self-contained (**standart**) | `.\build\publish-windows.ps1` | **Hech narsa.** ZIP ni ochib `.exe` ni bosish kifoya. |
+| framework-dependent | `.\build\publish-windows.ps1 -FrameworkDependent` | **.NET 8 Runtime** |
 
 > ### DIQQAT
 > Avalonia versiyasi **`.NET 8 Runtime`** talab qiladi —
@@ -240,8 +248,9 @@ Foydalanuvchi qaysi ekanini bilmasa:
 > Kompyuterda `.NET Desktop Runtime` allaqachon o'rnatilgan bo'lsa, dastur
 > baribir ishlaydi — Desktop Runtime o'z ichiga oddiy .NET Runtime'ni oladi.
 
-**Tavsiya:** maktabga tarqatishda **doim `-SelfContained $true`** (standart)
-ishlating. Hajmi kattaroq, lekin foydalanuvchi hech narsa o'rnatmaydi.
+**Tavsiya:** maktabga tarqatishda **standart rejimni** (self-contained) ishlating —
+ya'ni hech qanday qo'shimcha bayroq bermang. Hajmi kattaroq, lekin foydalanuvchi
+hech narsa o'rnatmaydi.
 
 ### FOYDALANUVCHIGA BERILADIGAN KO'RSATMA
 
@@ -330,9 +339,34 @@ yo'qotmaydi**.
 | | to'liq: `C:\Users\<Foydalanuvchi>\AppData\Local\DarsJadvali\darsjadvali.db` |
 | **macOS** | `~/Library/Application Support/DarsJadvali/darsjadvali.db` |
 | | to'liq: `/Users/<foydalanuvchi>/Library/Application Support/DarsJadvali/darsjadvali.db` |
+| **Linux** | `~/.local/share/DarsJadvali/darsjadvali.db` |
+| | to'liq: `/home/<foydalanuvchi>/.local/share/DarsJadvali/darsjadvali.db` |
 
 Manba: `InfrastructureServiceRegistration.DefaultDbPath`
 (`Environment.SpecialFolder.LocalApplicationData` orqali, cross-platform).
+
+> **Diqqat.** .NET macOS'da `LocalApplicationData` ni **`~/Library/Application
+> Support`** ga moslashtiradi — bu macOS'ning odatiy joyi. Linux'da esa
+> XDG konvensiyasiga ko'ra `~/.local/share` ga moslashtiradi.
+>
+> `Library` papkasi Finder'da yashirin — ochish uchun
+> **Go → Go to Folder…** (`Shift+Cmd+G`) da to'liq yo'lni yozing.
+
+Yonida yana ikkita fayl bo'ladi: `darsjadvali.db-wal` va `darsjadvali.db-shm` —
+baza **WAL rejimida** ishlaydi (`SqlitePragmaInterceptor`). Nusxa olishdan oldin
+dasturni yoping.
+
+### Avtomatik zaxira
+
+Dastur migratsiya qo'llashdan **oldin** o'zi zaxira oladi (`DatabaseBackupService`,
+`VACUUM INTO`):
+
+```
+<baza papkasi>/backups/darsjadvali-YYYYMMDD-HHMMSS.db
+```
+
+Oxirgi **10 tasi** saqlanadi, eskilari avtomatik o'chadi. Batafsil:
+[`MIGRATSIYA.md`](MIGRATSIYA.md).
 
 ### Zaxira nusxa olish (foydalanuvchiga aytish uchun)
 
@@ -349,7 +383,11 @@ Manba: `InfrastructureServiceRegistration.DefaultDbPath`
 
 ```bash
 # macOS
-rm -rf ~/Library/"Application Support"/DarsJadvali
+rm -rf ~/Library/Application\ Support/DarsJadvali
+```
+```bash
+# Linux
+rm -rf ~/.local/share/DarsJadvali
 ```
 ```powershell
 # Windows

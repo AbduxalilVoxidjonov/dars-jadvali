@@ -8,7 +8,9 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <Authors>Abduxalil Voxidjonov</Authors>
     <Product>Dars Jadvali Tuzuvchi</Product>
-    <Version>1.0.0</Version>
+    <!-- VERSIYANING YAGONA MANBASI. Boshqa joyda qo'lda yozilmaydi: AppInfo.Version uni
+         assembly atributidan o'qiydi, veb sahifa esa /api/about orqali oladi. -->
+    <Version>2.0.0</Version>
     <!-- Windows-target loyihalarni macOS/Linux da restore/compile qilish uchun -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
@@ -16,6 +18,15 @@
   <PropertyGroup>
     <PkgEfCore>8.0.11</PkgEfCore>
     <PkgExtensions>8.0.1</PkgExtensions>
+  </PropertyGroup>
+
+  <!-- DJ0001 — eskirgan ExportAsync(PdfExportOptions) (qamrovi aniq emas) ogohlantirishi.
+       U hali ko'chirilmagan eski chaqiruvchilarda (Desktop, UI, mavjud testlar) o'chirib
+       qo'yilgan; yangi kodda (Web, Infrastructure) ogohlantirish KUCHDA qoladi. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'DarsJadvali.Desktop'
+                            or '$(MSBuildProjectName)' == 'DarsJadvali.UI'
+                            or '$(MSBuildProjectName)' == 'DarsJadvali.Tests'">
+    <NoWarn>$(NoWarn);DJ0001</NoWarn>
   </PropertyGroup>
 
 </Project>

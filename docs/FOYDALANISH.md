@@ -10,8 +10,11 @@ Kompyuter bilimi talab qilinmaydi — bosqichlarni tartib bilan bajaring.
 ```
 1. Fanlar  →  2. Sinflar  →  3. O'qituvchilar  →  4. Biriktirmalar
                                                         │
-5. Hafta kunlari  →  6. O'qituvchi vaqti  →  7. Jadval tuzish  →  8. PDF qilib saqlash
+5. Hafta kunlari  →  6. O'qituvchi vaqti  →  7. Jadval tuzish  →  8. Chop etish
 ```
+
+Asosiy ish 7-bosqichda — **Bosh sahifa** dagi jadval taxtasida bo'ladi: u yerda
+avtomatik tuzish, kartalarni ko'chirish, bekor qilish va qulflash bir joyda.
 
 ---
 
@@ -22,12 +25,17 @@ hafta kunlari (Dushanba–Shanba) hamda 7 ta dars soati bilan to'ldiriladi.
 
 Chap tomonda menyu, o'ngda tanlangan bo'lim ko'rinadi.
 
-Barcha ma'lumot kompyuteringizda saqlanadi (internet kerak emas):
+Barcha ma'lumot kompyuteringizda saqlanadi — jadval tuzish uchun internet kerak emas:
 
 | Tizim | Baza fayli |
 |-------|-----------|
 | Windows | `%LOCALAPPDATA%\DarsJadvali\darsjadvali.db` |
 | macOS | `~/Library/Application Support/DarsJadvali/darsjadvali.db` |
+| Linux | `~/.local/share/DarsJadvali/darsjadvali.db` |
+
+Dastur sxemani yangilashdan oldin **avtomatik zaxira nusxa** oladi — u shu papkadagi
+`backups/` ichiga `darsjadvali-YYYYMMDD-HHMMSS.db` nomi bilan tushadi. Oxirgi **10 tasi**
+saqlanadi, eskilari o'zi o'chib boradi.
 
 ---
 
@@ -209,53 +217,115 @@ Oxirida **Saqlash** ni bosing. **Bekor qilish** — saqlanmagan o'zgarishlarni q
 
 ## 7-bosqich. Jadval tuzish
 
-**Menyu: Dars jadvali**
+> **Avval buni o'qing — dasturda jadval bilan ishlaydigan IKKITA ekran bor.**
+>
+> | Ekran | Qayerda | Nima uchun |
+> |---|---|---|
+> | **Jadval taxtasi** | **Bosh sahifa** ning pastki qismida | **Asosiy ish joyi.** Kartani ko'chirish, bekor qilish (undo), qulflash, kattalashtirish, joylashtirilmagan darslar paneli, avtomatik tuzish — hammasi shu yerda |
+> | **Dars jadvali** | Chap menyudagi **"Dars jadvali"** | Eskiroq, soddaroq ekran: bitta sinf yoki o'qituvchi jadvalini ko'rish va katak-katak to'ldirish. **Bu ekranda bekor qilish (undo) ishlamaydi** |
+>
+> Quyidagi 7.1–7.5 bo'limlari **Bosh sahifadagi jadval taxtasi** haqida.
 
-Ekranda katakli jadval: yuqorida **hafta kunlari**, chapda **dars raqamlari**.
+### 7.1 Kartani ko'chirish — "kartani qo'lga olish"
 
-Yuqorida ikkita ko'rish rejimi bor:
+Karta — jadvaldagi bitta dars. Ko'chirish **sichqonchani bosib turib sudrash emas**,
+balki **ikki marta bosish** bilan bo'ladi:
 
-| Rejim | Nima ko'rsatadi |
-|-------|-----------------|
-| **Sinf bo'yicha** | Tanlangan sinfning butun haftalik jadvali |
-| **O'qituvchi bo'yicha** | Tanlangan o'qituvchining butun haftalik yuklamasi |
+1. **Kartani bosing** — u "qo'lingizga" oladi va kursor ortidan yuradi.
+2. **Kerakli katakni bosing** — karta o'sha yerga tushadi.
 
-Rejimni tanlagach, yonidagi ro'yxatdan kerakli sinfni yoki o'qituvchini tanlaysiz.
+Karta qo'lda turganda jadval kataklari **rangga kiradi** — bu qayerga qo'yish
+mumkinligini ko'rsatadi:
 
-### 7.1 Qo'lda joylashtirish
+| Rang | Ma'nosi |
+|---|---|
+| **Yashil** | Yaxshi joy — hech qanday muammo yo'q |
+| **Ko'k** | Qo'ysa bo'ladi, lekin ogohlantirish bor (fan shu kuni takrorlanadi, haftalik soat oshadi, oyna hosil bo'ladi) |
+| **Kulrang** | **Bu yerga qo'yib bo'lmaydi** — sinf yoki o'qituvchi band, kun yopiq, karta qulflangan |
 
-1. Yuqoridan **sinfni** tanlang.
-2. Bo'sh katakni sichqonchaning **chap tugmasi** bilan bosing (masalan Dushanba, 1-dars).
-3. **Fan** va **o'qituvchi** ni tanlang (ro'yxatda faqat shu sinfga biriktirilganlar chiqadi).
-4. Kerak bo'lsa **xona** raqamini o'zgartiring.
-5. **Qo'yish** ni bosing.
+**Klaviatura yordamchilari:**
 
-Dastur darhol tekshiradi. Xato bo'lsa **qizil** xabar chiqadi va dars qo'yilmaydi.
-Ogohlantirish bo'lsa **sariq** xabar chiqadi — bunda "Baribir qo'yish" tugmasi orqali
-davom etishingiz mumkin.
+| Tugma | Nima qiladi |
+|---|---|
+| **SHIFT** (bosib turing) | Shu karta uchun **barcha mumkin bo'lgan joylarni** yoritib ko'rsatadi |
+| **CTRL** (bosib kartani oling) | Bir katakdagi **bir nechta bog'liq kartani birga** oladi (juft dars, guruhlarga bo'lingan dars). Ulardan bittasi qulflangan bo'lsa — birga olish ishlamaydi |
+| **ESC** | Qo'ldagi kartani qo'yib yuboradi, hech narsa o'zgarmaydi |
 
-**Darsni o'chirish:** ikki xil usul bor —
+Kartani jadvaldan **olib qo'yish** uchun: karta ustida **o'ng tugma** →
+**"Panelga olib qo'yish"**. Karta o'ngdagi "Joylashtirilmagan kartalar" paneliga qaytadi.
 
-- katakni **o'ng tugma** bilan bosing, yoki
-- katakni chap tugma bilan tanlab, **"Katakni bo'shatish"** tugmasini bosing.
+### 7.2 Bekor qilish va qaytarish (undo / redo)
 
-**Darsni ko'chirish:** darsni eski katakdan o'chirib, yangi katakka qaytadan qo'ying.
-Katakni sudrab ko'chirish hozircha ishlamaydi.
+| Tugma | Nima qiladi |
+|---|---|
+| **Ctrl + Z** | Oxirgi amalni bekor qiladi |
+| **Ctrl + Y** (yoki **Ctrl + Shift + Z**) | Bekor qilinganni qaytaradi |
 
-**Butun jadvalni o'chirish:** yuqoridagi **"Jadvalni tozalash"** tugmasi.
+Tarix **100 qadam** saqlanadi — ekranda "12 / 100 qadam" ko'rinishida yozib turadi.
+Bekor qilish ishlaydigan amallar: kartani ko'chirish, panelga olib qo'yish,
+qulflash/qulfni ochish, CTRL bilan guruh ko'chirish (bu bitta qadam hisoblanadi).
 
-### 7.2 Avtomatik tuzish
+> **Tarix qachon o'chadi:** siz jadvalni **qaytadan yuklaganingizda** — ya'ni
+> Bosh sahifaga yangidan kirganingizda yoki **"Yangilash"** tugmasini bosganingizda.
+> Kartani o'chirish tarixni o'chirmaydi.
+>
+> **Diqqat:** chap menyudagi eski **"Dars jadvali"** ekranida bekor qilish
+> **umuman yo'q** — u yerda o'chirilgan dars Ctrl+Z bilan qaytmaydi.
 
-1. **Bosh sahifa** ga o'ting va **"Avtomatik tuzish"** tugmasini bosing.
-2. Tasdiq oynasi chiqadi: *"Jadval avtomatik tuziladi. Mavjud jadval o'chirilib,
-   qaytadan tuziladi. Davom etilsinmi?"* — **Ha** ni bossangiz jarayon boshlanadi,
-   **Yo'q** ni bossangiz hech narsa o'zgarmaydi.
-3. Jarayon davomida uning qay darajada bajarilgani ko'rinib turadi; kerak bo'lsa
-   **"Bekor qilish"** tugmasi bilan to'xtatish mumkin.
+### 7.3 Qulflash
 
-> **Diqqat:** avtomatik tuzish har doim mavjud jadvalni to'liq o'chirib, boshidan
-> tuzadi. Qo'lda qo'yilgan darslarni saqlab qolgan holda tuzish imkoniyati hozircha yo'q.
-> Shuning uchun jadvalni avval avtomatik tuzib, keyin qo'lda silliqlagan ma'qul.
+Jadvalning bir qismini "qotirib qo'yish" kerak bo'lsa (masalan direktor tasdiqlagan
+darslar), kartani **qulflang**:
+
+- Karta ustida **o'ng tugma** → **"Qulflash"**. Qulfni ochish ham shu yerda.
+
+Qulflangan karta:
+- qo'lga olinmaydi va ko'chirilmaydi;
+- **avtomatik tuzishda ham joyida qoladi** (agar "Qulflangan kartalar joyida qolsin"
+  belgisi turgan bo'lsa — u standart holatda yoqilgan);
+- qulf **bazaga yoziladi**, ya'ni dasturni yopib-ochsangiz ham saqlanib qoladi.
+
+### 7.4 Ko'rinishni sozlash
+
+| Imkoniyat | Qanday |
+|---|---|
+| **Kattalashtirish / kichraytirish** | **`+`** va **`−`** tugmalari yoki ekrandagi tugmalar. Oraliq: **50% dan 200% gacha**, 10% qadam bilan |
+| **100% ga qaytarish** | **Ctrl + 0** |
+| **Zichlik** | "Zich / Oddiy / Keng" — katak balandligini o'zgartiradi |
+| **Ranglarni teskari qilish** | **`*`** tugmasi |
+| **Smena tanlash** | Maktabda **ikki smena** bo'lsa yuqorida smena ro'yxati chiqadi va faqat o'sha smenaning sinflari hamda dars soatlari ko'rsatiladi. Bir smenali maktabda bu ro'yxat umuman ko'rinmaydi |
+
+Jadval **virtualizatsiyalangan** — ekranda ko'rinmayotgan qatorlar chizilmaydi.
+Shu sababli 30–40 sinfli maktabda ham silliq ishlaydi.
+
+### 7.5 Joylashtirilmagan darslar paneli
+
+O'ng tomonda **"Joylashtirilmagan kartalar"** paneli turadi. Unda o'quv rejasida
+bor, lekin jadvalga hali tushmagan darslar ko'rinadi (haftalik soat to'lmagan darslar).
+
+Joylashtirish: **panelda kartani bosing → jadvalda kerakli katakni bosing.**
+Ekranda ham shu ko'rsatma yozib turadi.
+
+Panel bo'shab qolsa — barcha darslar joylashgan, jadval tayyor.
+
+### 7.6 Avtomatik tuzish
+
+**Bosh sahifa** da **"Avtomatik tuzish"** bo'limi bor. U yerda quyidagilarni sozlaysiz:
+
+| Sozlama | Ma'nosi |
+|---|---|
+| **Seed** (standart `12345`) | Tasodifiylik urug'i. **Bir xil seed + bir xil ma'lumot = bir xil jadval.** Boshqa variantni ko'rmoqchi bo'lsangiz raqamni o'zgartiring |
+| **Qidiruv byudjeti** | `Kichik (tez)` · `Oddiy` · `Katta (sekinroq)` · `Juda katta (eng sekin)`. Qanchalik katta bo'lsa, dastur shuncha ko'p variantni sinab ko'radi va natija shuncha yaxshi bo'ladi — lekin uzoqroq ishlaydi |
+| **Qulflangan kartalar joyida qolsin** | Standart: **yoqilgan**. Qulflangan darslar qimirlamaydi |
+| **To'liq bo'lmasa ham saqlansin** | Standart: **yoqilgan**. Hamma dars joylashmasa ham, topilgan eng yaxshi jadval saqlanadi |
+
+Jarayon davomida qaysi bosqichda ekani, necha karta joylashgani va jarima
+ko'rsatkichi ko'rinib turadi. **"Bekor qilish"** tugmasi bilan istalgan paytda
+to'xtatish mumkin — bunda **eski jadval joyida qoladi**, hech narsa buzilmaydi.
+
+> **Diqqat:** avtomatik tuzish qulflanmagan barcha kartalarni o'chirib, qaytadan
+> joylashtiradi. Qo'lda silliqlagan ishingizni saqlab qolish uchun **muhim
+> darslarni oldindan qulflang** (7.3-bo'lim).
 
 Natijada nechta dars joylashtirilgani va nechtasiga joy topilmagani yoziladi.
 
@@ -267,15 +337,16 @@ Natijada nechta dars joylashtirilgani va nechtasiga joy topilmagani yoziladi.
 | Ish kunlari kam | Hafta kunlari bo'limida kun qo'shing yoki kunlik dars sonini oshiring |
 | O'qituvchi vaqti juda tor | O'qituvchi vaqti cheklovlarini yumshating |
 | Bitta o'qituvchida juda ko'p sinf | Yukni boshqa o'qituvchiga taqsimlang |
+| Byudjet kichik | "Qidiruv byudjeti" ni `Katta` yoki `Juda katta` ga o'zgartiring |
+| Aynan shu variant omadsiz | **Seed** raqamini o'zgartirib qayta urinib ko'ring |
 
-**Maslahat:** avtomatik tuzishdan keyin jadvalni ko'zdan kechiring va kerakli
-darslarni qo'lda o'chirib-qo'yib "silliqlang". Avtomatik generatsiya barcha
-qoidalarga rioya qiladi, lekin "qulaylik" (masalan og'ir fanlar ertalabga)
-bo'yicha inson qarori yaxshiroq bo'ladi.
+**Maslahat:** avval avtomatik tuzing, keyin natijani ko'zdan kechirib qo'lda
+silliqlang. Avtomatik tuzish barcha qat'iy qoidalarga rioya qiladi, lekin
+"qulaylik" (og'ir fanlar ertalabga) bo'yicha inson qarori yaxshiroq bo'ladi.
 
 ---
 
-## 8-bosqich. PDF qilib saqlash
+## 8-bosqich. Chop etish va PDF qilib saqlash
 
 Tayyor jadvalni chop etish yoki boshqalarga yuborish uchun PDF faylga saqlash mumkin.
 
@@ -285,6 +356,18 @@ Tayyor jadvalni chop etish yoki boshqalarga yuborish uchun PDF faylga saqlash mu
 |---------|----------------|
 | **Dars jadvali** ekranida | Ekranda ochilgan jadval (tanlangan sinf yoki o'qituvchi bo'yicha) |
 | **Bosh sahifa** da | Butun maktab jadvali — barcha sinflar bitta hujjatda |
+
+### Chop etish dizaynlari
+
+Chop etish **tayyor dizaynlar** asosida ishlaydi — sahifa o'lchami, yo'nalishi,
+ranglari va sarlavhalari oldindan tayyorlangan. Hozir **4 ta dizayn** bor:
+
+| Dizayn | Nima uchun |
+|---|---|
+| **Sinf jadvali — Ko'k** | Bitta sinfning haftalik jadvali, ko'k bezakli |
+| **Sinf jadvali — Oq** | Xuddi shunday, lekin bezaksiz — qora-oq printer uchun tejamli |
+| **O'qituvchi jadvali — Yashil** | Bitta o'qituvchining haftalik yuklamasi |
+| **Maktab jamlanmasi** | Barcha sinflar bitta jamlanma varaqda |
 
 Tugmani bosganingizda faylni qayerga saqlashni so'raydigan oyna ochiladi. Nom va
 papkani tanlab **Saqlash** ni bosing.
@@ -315,13 +398,44 @@ dasturning o'ziga qo'shib yuborilgan — kompyuterga alohida shrift o'rnatish sh
 
 Barcha ma'lumot **bitta faylda**:
 
-```
-%LOCALAPPDATA%\DarsJadvali\darsjadvali.db
-```
+| Tizim | Yo'l |
+|---|---|
+| Windows | `%LOCALAPPDATA%\DarsJadvali\darsjadvali.db` |
+| macOS | `~/Library/Application Support/DarsJadvali/darsjadvali.db` |
+| Linux | `~/.local/share/DarsJadvali/darsjadvali.db` |
 
-- **Zaxira nusxa:** dasturni yoping va shu faylni flesh-xotiraga ko'chiring.
-- **Tiklash:** zaxira faylni o'sha joyga qaytaring (dastur yopiq holatda).
+- **Avtomatik zaxira:** dastur sxemani yangilashdan oldin o'zi zaxira oladi —
+  o'sha papkadagi `backups/` ichida `darsjadvali-YYYYMMDD-HHMMSS.db`. Oxirgi 10 tasi saqlanadi.
+- **Qo'lda zaxira:** **dasturni yoping** va `darsjadvali.db` faylini ko'chiring.
+- **Tiklash:** zaxira faylni `darsjadvali.db` nomi bilan o'sha joyga qaytaring
+  (dastur yopiq holatda).
 - **Hammasini tozalash:** faylni o'chiring — dastur keyingi ochilishida yangi baza yaratadi.
+
+> **Muhim:** dastur ishlayotganda baza yonida `darsjadvali.db-wal` va `darsjadvali.db-shm`
+> yordamchi fayllari paydo bo'ladi. **Nusxa olishdan oldin dasturni yoping** — aks holda
+> ko'chirilgan fayl to'liq bo'lmasligi mumkin.
+
+---
+
+## Ma'lum cheklovlar
+
+Quyidagilar **hozircha ishlamaydi** — dastur ularni va'da qilmaydi:
+
+| Nima | Hozirgi holat |
+|---|---|
+| **Tushlik oynasi** | "Har sinfda 4–5-dars orasida tushlik bo'lsin" degan qoidani qo'yib bo'lmaydi. Vaqtincha yechim: tushlik soatini "ish kuni emas" qilib ajratish |
+| **Bir nechta bino** | Dasturda faqat xonalar bor, **bino** tushunchasi yo'q. Shu sababli "o'qituvchi ikki bino orasida yugurmasin" degan qoida ham yo'q |
+| **Darslar orasidagi bog'liqlik** | "Bu dars ana undan keyin bo'lsin", "bu ikkisi bir vaqtda bo'lsin" kabi qoidalar qo'yilmaydi |
+| **Toq/juft hafta (A/B hafta)** | Ikki haftalik tsikl texnik jihatdan bor, lekin "toq haftada shu, juft haftada bu" degan qoida yozilmagan |
+| **O'quvchi darajasidagi jadval** | O'quvchilar faqat **soni** sifatida hisobga olinadi; har bir o'quvchining alohida jadvali yo'q |
+| **Ikkinchi smenaga taqsimlash** | Ikki smena **ko'rsatiladi va filtrlanadi**, lekin eski bazadan ko'chirishda barcha dars soatlari 1-smenaga tushadi. Ularni smenalarga bo'lish uchun ekran hali yo'q |
+| **"Dars jadvali" ekranida bekor qilish** | Chap menyudagi eski ekranda **Ctrl+Z yo'q**. Bekor qilish kerak bo'lsa Bosh sahifadagi taxtadan foydalaning |
+| **Sichqoncha bilan sudrash** | Karta **sudrab ko'chirilmaydi** — "bosing → bosing" usuli ishlatiladi (7.1-bo'lim). Bu ataylab shunday qilingan |
+
+**O'qituvchi vaqti haqida:** "tavsiya etilmaydi" darajasidagi cheklovga qanday jarima
+qo'ysangiz ham, avtomatik tuzish ularning **hammasini bir xil og'irlikda** hisoblaydi —
+"biroz noqulay" bilan "juda noqulay" farqlanmaydi. Faqat eng yuqori jarima (1000)
+to'liq **taqiq** sifatida qabul qilinadi. Generatsiya oxirida bu haqda xabar chiqadi.
 
 ---
 

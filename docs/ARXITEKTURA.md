@@ -9,61 +9,65 @@ qoidalar (validatsiya) o'zgarmaydi.
 
 ## 1. Qatlamlar va bog'liqlik yo'nalishi
 
+Loyihada **ikkita mustaqil ildiz** bor: `Domain` (ma'lumot) va `Scheduling` (algoritm).
+Ular bir-birini **ko'rmaydi**; ularni birlashtiradigan yagona joy — `Application`.
+
 ```
-                          ┌─────────────────────────────┐
-                          │      DarsJadvali.Domain      │
-                          │  Entity, Enum, AppInfo       │
-                          │  (hech kimga bog'liq EMAS)   │
-                          └──────────────┬──────────────┘
-                                         │  ▲
-                                         │  │ bog'lanadi
-                                         ▼  │
-                          ┌─────────────────────────────┐
-                          │   DarsJadvali.Application    │
-                          │  IRepository, IUnitOfWork    │
-                          │  IScheduleValidator          │
-                          │  IScheduleGenerator          │
-                          │  I*Service                   │
-                          │  (EF Core'ni BILMAYDI)       │
-                          └──────────────┬──────────────┘
-                                   ▲     │     ▲
-              bog'lanadi ──────────┘     │     └────────── bog'lanadi
-                     │                   │                    │
-        ┌────────────┴──────────┐        │        ┌───────────┴────────────────────┐
-        │ DarsJadvali.          │        │        │ DarsJadvali.Desktop (Avalonia) │
-        │ Infrastructure        │        │        │   — asosiy, Windows + macOS    │
-        │ EF Core + SQLite      │        │        │ DarsJadvali.UI (WPF) — eskirgan│
-        │ EfRepository, UoW     │        │        │ DarsJadvali.Web                │
-        │ Migrations, Seed      │        │        │                                │
-        │ PDF eksport (PDFsharp)│        │        │ (taqdimot qatlami)             │
-        └───────────────────────┘        │        └────────────────────────────────┘
-                                         │
-                             interfeyslar shu yerda,
-                          implementatsiyalar tashqarida
+   ┌─────────────────────────────┐     ┌──────────────────────────────────┐
+   │      DarsJadvali.Domain      │     │     DarsJadvali.Scheduling       │
+   │  Entity, Enum, AppInfo       │     │  SlotMask, AC-3, ejection chain, │
+   │                              │     │  SA+tabu, Hopcroft–Karp          │
+   │  (hech kimga bog'liq EMAS)   │     │  (0 ta tashqi paket, Domain'ni   │
+   │                              │     │   ham ko'rmaydi)                 │
+   └──────────────┬──────────────┘     └────────────────┬─────────────────┘
+                  │                                     │
+                  └──────────────┬──────────────────────┘
+                                 ▼
+                  ┌─────────────────────────────────────┐
+                  │       DarsJadvali.Application       │
+                  │  IRepository, IUnitOfWork,          │
+                  │  ISchedulingStore, ICardBoardService │
+                  │  ISchedulingMapper  ◄── KO'PRIK     │
+                  │  (EF Core'ni ham, UI'ni ham bilmaydi)│
+                  └──────────────────┬──────────────────┘
+                                     ▲
+                  ┌──────────────────┴──────────────────┐
+                  │      DarsJadvali.Infrastructure     │
+                  │  EF Core + SQLite, migratsiya,      │
+                  │  backfill, projector, chop etish    │
+                  └──────────────────┬──────────────────┘
+                                     ▲
+                  ┌──────────────────┴──────────────────┐
+                  │   Desktop (Avalonia)   ·   Web      │
+                  │        (taqdimot qatlami)           │
+                  └─────────────────────────────────────┘
 ```
 
 **Bog'liqlik qoidasi — strelkalar faqat ichkariga qaraydi:**
 
 ```
-Domain  ←  Application  ←  Infrastructure
-                        ←  Desktop   (Avalonia — asosiy dastur)
-                        ←  UI        (WPF — eskirgan)
-                        ←  Web
+Domain      ←┐
+             ├← Application ← Infrastructure ← Desktop
+Scheduling  ←┘                              ← Web
 ```
 
 | Qatlam | Nimaga bog'langan | Nimani bilmaydi |
 |--------|-------------------|-----------------|
 | `Domain` | hech nimaga | hamma narsani |
-| `Application` | `Domain` | EF Core, SQLite, Avalonia, WPF, HTTP |
-| `Infrastructure` | `Application`, `Domain` | Desktop, UI, Web |
-| `Desktop` (Avalonia) | `Application`, `Infrastructure` | UI, Web |
-| `UI` (WPF, eskirgan) | `Application`, `Infrastructure` | Desktop, Web |
-| `Web` | `Application`, `Infrastructure` | Desktop, UI |
+| `Scheduling` | hech nimaga | **`Domain` ni ham**, EF Core, UI |
+| `Application` | `Domain`, `Scheduling` | EF Core, SQLite, Avalonia, HTTP |
+| `Infrastructure` | `Application` | Desktop, Web |
+| `Desktop` (Avalonia) | `Application`, `Infrastructure` | Web |
+| `Web` | `Application`, `Infrastructure` | Desktop |
 | `Tests` | hammasi | — |
 
-Natija: `Infrastructure` ni butunlay almashtirish mumkin (masalan SQLite o'rniga PostgreSQL)
-— `Application` kodiga bitta ham o'zgartirish kirmaydi, chunki u faqat
-`IRepository<T>` va `IUnitOfWork` bilan ishlaydi.
+Natija: `Infrastructure` ni butunlay almashtirish mumkin (masalan SQLite o'rniga
+PostgreSQL) — `Application` kodiga bitta ham o'zgartirish kirmaydi. Xuddi shunday,
+generatsiya yadrosini alohida, bazasiz va UI'siz sinash mumkin.
+
+> **`src/DarsJadvali.UI` (WPF) `.sln` dan CHIQARILGAN.** Papka diskda tarixiy nusxa
+> sifatida turibdi, lekin yig'ilmaydi va unga tegilmaydi. Prezentatsiya qatlami —
+> faqat **`DarsJadvali.Desktop`** (Avalonia) va **`DarsJadvali.Web`**.
 
 ---
 
@@ -73,92 +77,203 @@ Natija: `Infrastructure` ni butunlay almashtirish mumkin (masalan SQLite o'rniga
 
 Faqat ma'lumot tuzilmalari. Hech qanday mantiq, hech qanday NuGet paket.
 
-- `Common/BaseEntity` — `Id` maydoni
+- `Common/BaseEntity` — `Id`, `Uid`, `CreatedAtUtc`, `UpdatedAtUtc`, `RowVersion`;
+  yonida `ISoftDeletable` va `IConcurrencyAware` interfeyslari
 - `Common/AppInfo` — dastur nomi, versiyasi, muallif, Telegram, donat kartasi
-  (bu qiymatlar **faqat shu yerda** yoziladi, UI ham, Web ham shundan o'qiydi)
-- `Enums/WeekDay` + `WeekDayExtensions.ToUzbek()` / `.All`
-- `Entities/` — 8 ta entity:
+  (bu qiymatlar **faqat shu yerda** yoziladi, Desktop ham, Web ham shundan o'qiydi)
+- `Enums/` — `WeekDay`, `ResourceKind`, `ResourceOwnerKind`, `AvailabilityLevel`, …
+- `Entities/` — **sxema v2** (17 yangi + kengaytirilgan eskilari):
 
 ```
-Teacher ──┬── TeacherAssignment ──┬── Subject
-          │                       └── ClassGroup
-          ├── TeacherAvailability
-          └── ScheduleEntry ──────┬── Subject
-                                  └── ClassGroup
-
-WorkDay      — hafta kuni faolmi, kuniga nechta dars
-LessonSlot   — dars raqami ↔ aniq vaqt (08:30–09:15)
+AcademicYear ─┬── Term        (chorak — HAR BIRI ALOHIDA Schedule varianti)
+              ├── Shift       (smena)
+              ├── Period      (dars soati; PeriodNo smenalar bo'ylab UZLUKSIZ)
+              ├── Grade ── SchoolClass ─┬── ClassDivision ── StudentGroup
+              │                         └── (5 guruh: butun sinf, 1/2, o'g'il/qiz)
+              ├── Classroom
+              ├── Lesson ──┬── LessonTeacher  ── Teacher
+              │            ├── LessonClass    ── SchoolClass
+              │            ├── LessonGroup    ── StudentGroup   ← BANDLIK MANBAI
+              │            └── LessonClassroom── Classroom
+              ├── TimeOff   (OwnerKind + OwnerId — polimorf)
+              └── Schedule ──┬── Card ──┬── CardClassroom
+                             │          └── CardOccurrence  ← BANDLIK PROYEKSIYASI
+                             └── ScheduleEntry   (ESKI, hamon mavjud)
 ```
 
-`LessonSlot` — muhim bo'g'in: u dars **raqamini** real **vaqtga** bog'laydi,
-`TEACHER_UNAVAILABLE` tekshiruvi aynan shunga tayanadi.
+`Period` — muhim bo'g'in: u dars **raqamini** real **vaqtga** bog'laydi.
 
-### 2.2 Application — `src/DarsJadvali.Application`
+**`CardOccurrence`** — eng muhim yangilik. Bu **hosila (denormalizatsiyalangan)** jadval:
+har bir kartochka o'zi band qiladigan **har bir resurs** uchun bittadan qator yozadi.
+Unikal indeks to'qnashuvni **bazaning o'zida** to'sadi:
 
-Butun biznes-mantiq shu yerda.
+```
+UNIQUE UX_CardOccurrences_Schedule_Resource_Slot
+       (ScheduleId, ResourceKind, ResourceId, DayNo, PeriodNo, WeekNo)
+```
+
+Bandlik **guruh aniqligida** yoziladi — shuning uchun "1-guruh" va "2-guruh" bir slotda
+tura oladi, lekin "Butun sinf" va "1-guruh" tura olmaydi.
+
+### 2.2 Scheduling (yadro) — `src/DarsJadvali.Scheduling`
+
+**Sof algoritm kutubxonasi.** `.csproj` da **bitta ham tashqi NuGet paketi yo'q** —
+faqat BCL. EF Core ham, `Domain` entity'lari ham, UI ham unga kirmaydi.
+
+| Papka | Nima |
+|---|---|
+| `Model/` | `TimeGrid` (vaqtni bitta tekis slot fazosiga yig'adi), `SlotMask` (512 bitli `readonly struct`), `Card`, `Problem`, `Solution`, `SolutionState` |
+| `Constraints/` | `HardRules` (buzilmas qoidalar), `ConstraintSet` (soft qoidalar va og'irliklar) |
+| `Pipeline/` | `Verifier` → `Propagator` (AC-3) → `Constructor` → `EjectionChainRepair` → `Optimizer` (SA + tabu) → `Relaxer` |
+| `Rooms/` | `RoomAssigner` + `HopcroftKarp` (bipartite maksimal moslik) |
+| `Util/` | `Xoshiro256SS` — determinizm manbai |
+
+Yadro o'z ichki modeli bilan ishlaydi: barcha resurslar **`0..N-1` zich `int` indeks**,
+vaqt esa bitta tekis slot fazosi. To'liq tavsif: [`ALGORITM.md`](ALGORITM.md).
+
+### 2.3 Application — `src/DarsJadvali.Application`
+
+Butun biznes-mantiq shu yerda. **`Domain` va `Scheduling` ni bir vaqtda ko'radigan
+yagona qatlam.**
 
 | Papka | Nima uchun |
 |-------|-----------|
-| `Abstractions/` | `IRepository<T>`, `IUnitOfWork`, `IDatabaseInitializer` — bazaga "teshik" |
-| `Validation/` | Konflikt kodlari, `ValidationResult`, `ScheduleEntryDraft`, `ScheduleValidator` |
-| `Generation/` | `IScheduleGenerator`, `GreedyScheduleGenerator`, `GenerationOptions/Progress/Result` |
-| `Export/` | `PdfExportOptions`, `ISchoolTimetablePdfExporter`, `ITimetableExportModelBuilder` — PDF uchun ma'lumot modeli (chizish Infrastructure'da) |
-| `Services/` | `ITeacherService`, `ISubjectService`, ..., `IScheduleService` |
+| `Abstractions/` | `IRepository<T>`, `IUnitOfWork`, **`ITransactionalUnitOfWork`**, `ISchedulingStore`, **`ICardOccurrenceProjector`**, `IDatabaseInitializer`, `IDatabaseBackupService`, `IUpdateChecker` |
+| `Board/` | `ICardBoardService` + **`CardView`**, **`UnplacedLessonView`** — Desktop va Web uchun **umumiy** DTO'lar |
+| `Scheduling/` | **`ISchedulingMapper`** (ko'prik), `ScheduleGenerationService`, `SchedulingIdMap`, `GroupDivisionOverlapValidator` |
+| `Validation/` | Konflikt kodlari, `ValidationResult`, `ScheduleValidator` (eski yo'l) |
+| `Generation/` | `[Obsolete]` `GreedyScheduleGenerator` — eski `ScheduleEntry` yo'li |
+| `Export/` | PDF/HTML uchun ma'lumot modeli (chizish Infrastructure'da) |
+| `Services/` | `ITeacherService`, …, `IScheduleService`, `IScheduleSetService` |
 | `DependencyInjection/` | `AddApplication()` — hammasini `Scoped` qilib ro'yxatdan o'tkazadi |
 
-### 2.3 Infrastructure — `src/DarsJadvali.Infrastructure`
+#### Mapper — yadro va baza qayerda uchrashadi
 
-EF Core + SQLite. Application'dagi interfeyslarni "to'ldiradi".
+`Application/Scheduling/SchedulingMapper.cs` — **yagona** ko'prik:
 
-- `AppDbContext` — 8 ta `DbSet<>`
+```
+EF entity'lari
+   │  ISchedulingStore.LoadAsync
+   ▼
+SchedulingInput
+   │  ISchedulingMapper.BuildProblem      ← EF Id'lari → yadro indekslariga
+   ▼
+Problem  ──►  Scheduler.Generate  ──►  Solution
+   │  ISchedulingMapper.BuildCards        ← yadro indekslari → EF Id'lariga
+   │  SchedulingIdMap
+   ▼
+Card + CardOccurrence
+```
+
+> **Nom to'qnashuvi.** Yadrodagi `Card` — joylashtirilishi kerak bo'lgan **bo'lak**
+> (joylashmagan bo'lishi mumkin). Bazadagi `Card` — **joylashtirilgan** yozuv.
+> Farqni `SchedulingIdMap` yopadi.
+
+#### Tranzaksiya chegarasi — MAJBURIY qoida
+
+> Og'ir hisob-kitob **tranzaksiyadan TASHQARIDA**. Tranzaksiya faqat **yozish**
+> bosqichini qamrab oladi.
+
+```
+LoadAsync                             →  tranzaksiyadan tashqarida (o'qish)
+BuildProblem + Generate + BuildCards  →  tranzaksiyadan tashqarida (sof hisob, DB yo'q)
+DeleteCards + InsertCards
+   + RebuildOccurrences               →  BITTA ExecuteInTransactionAsync ichida
+```
+
+Sabab: SQLite yozuv qulfi butun generatsiya davomida ushlab turilsa, dasturning
+qolgan qismi va Web serveri bloklanadi. Xato yoki bekor qilinishda **eski jadval
+joyida qoladi**.
+
+### 2.4 Infrastructure — `src/DarsJadvali.Infrastructure`
+
+EF Core + SQLite + PDFsharp. Application'dagi interfeyslarni "to'ldiradi".
+
+- `AppDbContext` — sxema v2 ning barcha `DbSet<>` lari (+ eski `ScheduleEntries`)
 - `Configurations/` — indekslar va bog'lanishlar:
-  - `ScheduleEntry` uchun ikkita **unikal** indeks:
-    `(ClassGroupId, DayOfWeek, LessonNumber)` va `(TeacherId, DayOfWeek, LessonNumber)`
-    — ya'ni ikki karra band bo'lish bazaning o'zida ham taqiqlangan
-  - `TimeSpan` SQLite'da `long` (ticks) sifatida saqlanadi (`TimeSpanToTicksConverter`)
-  - Navigatsiyalar `AutoInclude()` — `GetAllAsync()` darrov `Teacher`, `Subject`,
-    `ClassGroup` bilan qaytadi, Application `Include` haqida bilmaydi
-  - `OnDelete(DeleteBehavior.Cascade)` — o'qituvchi o'chirilsa uning darslari ham o'chadi
-- `EfRepository<T>`, `UnitOfWork`
-- `DatabaseInitializer` — `MigrateAsync()` + **idempotent** seed
-  (7 kun: Dushanba–Shanba faol, Yakshanba nofaol; 7 dars soati: 08:30 dan 45+10 daqiqa)
-- `Export/SchoolTimetablePdfExporter` — `ISchoolTimetablePdfExporter` implementatsiyasi:
-  jadvalni PDF qilib chizadi. O'zbekcha harflar to'g'ri chiqishi uchun shrift
-  dasturga qo'shib yuboriladi (`Export/Fonts/DejaVuSansCondensed*.ttf`,
-  `EmbeddedFontResolver`). `AddExportServices()` uni DI ga qo'shadi.
-- Baza fayli yo'li — `InfrastructureServiceRegistration.DefaultDbPath`
-  (`Environment.SpecialFolder.LocalApplicationData` orqali, cross-platform):
+  - `UX_CardOccurrences_Schedule_Resource_Slot` — bandlikni DB darajasida to'sadi
+  - `UX_Schedules_IsActive` — **filtrlangan unikal** (`"IsActive" = 1`), ya'ni
+    bir vaqtda faqat bitta faol jadval
+  - `TimeSpan` SQLite'da `long` (ticks) sifatida saqlanadi
+  - **`OnDelete`:** `Cascade` **faqat egalik zanjirlarida**
+    (`AcademicYear` → bolalari, `Schedule` → `Card`, `Lesson` → join'lari,
+    `SchoolClass` → guruhlari). Ma'lumotnomalarga (`Teacher`, `Subject`, `Classroom`,
+    `Period`, …) barcha FK'lar — **`Restrict`**. Ya'ni o'qituvchini o'chirish
+    endi butun jadvalni jimgina o'chirib yubormaydi
+  - **`HasQueryFilter`:** `AppDbContext.ApplySoftDeleteFilters` — `ISoftDeletable`
+    ni implement qilgan **har bir** entity'ga `e => !e.IsDeleted` global filtri
+    (`Grade`, `SchoolClass`, `StudentGroup`, `Classroom`, `Subject`, `Teacher`).
+    `Card`/`CardOccurrence`/`Lesson` ataylab bundan tashqarida — yuqori hajmli
+    jadvallarga ortiqcha ustun va indeks qo'shmaslik uchun
+- `SqlitePragmaInterceptor` — har ochilgan ulanishga `journal_mode=WAL`,
+  `busy_timeout=5000`, `foreign_keys=ON`
+- **`SqliteExceptionTranslator`** — xom `SqliteException` ni tipli istisnolarga
+  aylantiradi (`UniqueConstraintViolationException`,
+  `ReferenceConstraintViolationException`, `CheckConstraintViolationException`).
+  Yagona chaqiruv joyi — `AppDbContext.SaveChanges(Async)`
+- **`DatabaseBackupService`** — `VACUUM INTO` bilan zaxira, `backups/` papkasiga,
+  oxirgi 10 tasi saqlanadi
+- **`Backfill/LegacyToV2Backfill`** — eski modeldan v2 ga ma'lumot ko'chirish
+  (idempotent). Batafsil: [`MIGRATSIYA.md`](MIGRATSIYA.md)
+- **`Projection/CardOccurrenceProjector`** — kartochkalardan bandlik qatorlarini quradi
+- `DatabaseInitializer` — zaxira → `MigrateAsync()` → seed → backfill
+- `Export/Printing/` — **JSON dizaynlarga asoslangan** chop etish dvigateli:
+  `Designs/*.json` (4 ta) + `PrintDesignPdfRenderer` (PDFsharp) + `TimetableHtmlExporter`.
+  Yangi shakl qo'shish uchun **kod o'zgartirilmaydi** — yangi JSON qo'shiladi.
+  O'zbekcha harflar uchun shrift dasturga qo'shib yuboriladi
+  (`Export/Fonts/DejaVuSansCondensed*.ttf`, `EmbeddedFontResolver`)
+- `Update/GitHubUpdateChecker` — `IUpdateChecker` implementatsiyasi (yagona tarmoq nuqtasi)
+- Baza fayli yo'li — `InfrastructureServiceRegistration.DefaultDbPath`:
   Windows'da `%LOCALAPPDATA%\DarsJadvali\darsjadvali.db`,
-  macOS'da `~/Library/Application Support/DarsJadvali/darsjadvali.db`.
+  macOS'da `~/Library/Application Support/DarsJadvali/darsjadvali.db`,
+  Linux'da `~/.local/share/DarsJadvali/darsjadvali.db`
 
-### 2.4 Desktop (Avalonia) — `src/DarsJadvali.Desktop`
+### 2.5 Desktop (Avalonia) — `src/DarsJadvali.Desktop`
 
-**Asosiy dastur.** Avalonia 11.2.3 + Material.Avalonia + CommunityToolkit.Mvvm,
-DI — `Microsoft.Extensions.Hosting`. Bitta kod bazasi **Windows'da ham, macOS'da ham**
-ishlaydi (`RuntimeIdentifiers`: `osx-arm64`, `osx-x64`, `win-x64`, `win-x86`).
+**Asosiy va yagona ish stoli dasturi.** Avalonia 11.2.3 + Material.Avalonia +
+CommunityToolkit.Mvvm, DI — `Microsoft.Extensions.Hosting`. Bitta kod bazasi
+**Windows'da ham, macOS'da ham** ishlaydi
+(`RuntimeIdentifiers`: `osx-arm64`, `osx-x64`, `win-x64`, `win-x86`).
 
 | Papka / fayl | Nima uchun |
 |---|---|
 | `Views/*.axaml` | Sahifalar (XAML emas, **AXAML**) |
-| `ViewModels/` | `ViewModelBase` + sahifa ViewModel'lari, `ColorPalette` |
-| `Services/` | `INavigationService`, `IDialogService` |
+| `ViewModels/` | `ViewModelBase` + sahifa ViewModel'lari, `ColorPalette`, `TimetableMetrics` (zoom/zichlik) |
+| `Services/Timetable/` | Jadval taxtasi yadrosi: `TimetableBoard` (xotiradagi holat), `TimetableRuleSet` (baholash qoidalari), `DragSession` ("qo'ldagi karta"), `CommandHistory` (undo/redo), `TimetableCommands`, `TimetableBoardWriter` (bazaga yozish), `CardViewAdapter` |
+| `Services/` | `INavigationService`, `IDialogService`, `AsyncOperationRunner` |
 | `ViewLocator.cs` | ViewModel → View moslashuvi |
 | `Converters/`, `Styles/`, `Models/` | Konverterlar, umumiy uslublar, kichik yordamchi modellar |
 
+**Muhim chegara:** baholash mantig'i (`TimetableBoard` + `TimetableRuleSet`) — sof
+C#, Avalonia turlariga bog'liq emas va testlar bilan qoplangan
+(`tests/DarsJadvali.Tests/Desktop/`). ViewModel'lar `IBrush` qaytarmaydi — rang
+XAML tomonda konverter orqali tanlanadi ([`CONTRACT.md`](CONTRACT.md) §1.4).
+
 Ishga tushirish: `dotnet run --project src/DarsJadvali.Desktop`.
 
-### 2.5 UI (WPF) — `src/DarsJadvali.UI`
+### 2.6 UI (WPF) — `src/DarsJadvali.UI` — **ARXIV**
 
-**Eskirgan.** WPF + MaterialDesignThemes + CommunityToolkit.Mvvm, faqat `net8.0-windows`.
-Solution ichida saqlanib turibdi, lekin yangi ish `DarsJadvali.Desktop` da olib boriladi
-(WPF'dan Avalonia'ga o'tish tarixi: [`AVALONIA-KOCHIRISH.md`](AVALONIA-KOCHIRISH.md)).
+**`DarsJadvali.sln` dan CHIQARILGAN.** Papka diskda tarixiy nusxa sifatida turibdi,
+lekin **yig'ilmaydi, testlanmaydi va unga tegilmaydi**. Bog'liqlik diagrammasida ham
+yo'q. WPF'dan Avalonia'ga o'tish tarixi va retseptlari:
+[`AVALONIA-KOCHIRISH.md`](AVALONIA-KOCHIRISH.md).
 
-### 2.6 Web — `src/DarsJadvali.Web`
+### 2.7 Web — `src/DarsJadvali.Web`
 
-`http://localhost:5080` — minimal API + bitta faylli SPA (`wwwroot/index.html`, CDN'siz).
-**Biznes-mantiq takrorlanmaydi**: u ham xuddi Desktop kabi `IScheduleService`,
-`IScheduleValidator`, `IScheduleGenerator` ni chaqiradi. Shuning uchun brauzerda
-sinalgan xatti-harakat Desktop dasturida ham aynan shunday bo'ladi.
+`http://127.0.0.1:5080` — minimal API + bitta faylli SPA (`wwwroot/index.html`, CDN'siz,
+offline). **Biznes-mantiq takrorlanmaydi**: Desktop bilan bir xil Application
+servislarini chaqiradi — jadval taxtasi uchun `ICardBoardService`, generatsiya uchun
+`IScheduleGenerationService` (`/api/board/**`).
+
+Himoya choralari (`Program.cs`):
+
+- **Bog'lanish `127.0.0.1`** — "localhost" emas, tasodifan tarmoqqa ochilib
+  qolmasligi uchun; boshqa manzilga o'tkazilsa dastur ogohlantirish yozadi
+- **API kalit** — `UseApiKeyAuthorization`; kalit fayldan, sozlamadan
+  (`Security:ApiKey` / `DARSJADVALI_API_KEY`) o'qiladi yoki avtomatik yaratiladi
+- **Rate limiting** — `UseRateLimiter`
+- Uzoq davom etadigan generatsiya — `POST /api/board/generate` **job** sifatida
+  (`202 Accepted`), holati `GET /api/board/generate/{jobId}` orqali
 
 ---
 
@@ -209,7 +324,19 @@ sinalgan xatti-harakat Desktop dasturida ham aynan shunday bo'ladi.
 
 ## 4. Validatsiya dvigateli qanday ishlaydi
 
-Har qanday joylashtirish (qo'lda ham, avtomatik ham) bitta yo'ldan o'tadi:
+> **Diqqat — endi uchta tekshiruv qatlami bor:**
+>
+> | Qatlam | Nima | Qayerda |
+> |---|---|---|
+> | **1. Baza** | `UX_CardOccurrences_...` unikal indeksi bandlikni **guruh aniqligida** to'sadi | `CardOccurrenceConfiguration` |
+> | **2. Application** | `GROUP_DIVISION_OVERLAP` — DB ushlay olmaydigan yagona holat (turli bo'linishdagi guruhlar bir slotda) | `GroupDivisionOverlapValidator` |
+> | **3. Yadro** | Hard/soft cheklovlar — avtomatik tuzishda | `Scheduling/Constraints/` |
+>
+> Quyidagi `ScheduleValidator` — **eski (`ScheduleEntry`) yo'lining** validatori.
+> U hamon ishlab turibdi (chap menyudagi "Dars jadvali" ekrani va `/api/schedule/*`
+> unga tayanadi), lekin yangi jadval taxtasi va avtomatik tuzish undan o'tmaydi.
+
+Eski yo'lda har qanday joylashtirish bitta yo'ldan o'tadi:
 
 ```
 ScheduleEntryDraft (Id?, Class, Subject, Teacher, Day, LessonNumber, Room)
@@ -275,80 +402,153 @@ shu ishlatiladi.
 
 ## 5. Generatsiya va kengaytirish nuqtasi
 
-```csharp
-public interface IScheduleGenerator
-{
-    string Name { get; }
-    string Description { get; }
-    Task<GenerationResult> GenerateAsync(
-        GenerationOptions options,
-        IProgress<GenerationProgress>? progress = null,
-        CancellationToken ct = default);
-}
-```
-
-Hozirgi implementatsiya — **`GreedyScheduleGenerator`** (`Name = "Greedy (tezkor)"`):
+Avtomatik tuzish **`DarsJadvali.Scheduling`** yadrosida bajariladi. Kirish nuqtasi —
+`IScheduleGenerationService.GenerateAsync` (`Application/Scheduling/`).
 
 ```
-1. Barcha TeacherAssignment larni WeeklyHoursCount bo'yicha kamayish tartibida saralaydi
-   (eng "og'ir" biriktirmalar avval joylashadi — ularga joy topish qiyinroq).
-2. Har bir kerakli soat uchun (kun, dars raqami) juftliklarini ketma-ket sinaydi.
-3. Har bir nomzod joyni IScheduleValidator.ValidateAsync dan o'tkazadi.
-4. Birinchi mos joyni oladi va saqlaydi.
-5. Joy topilmasa: UnplacedCount++ va Messages ga o'zbekcha izoh qo'shadi.
+DashboardViewModel  (Seed, Complexity, KeepLocked, SavePartial)
+        │  IProgress<ScheduleGenerationProgress>  +  CancellationToken
+        ▼
+IScheduleGenerationService.GenerateAsync
+        │  1. ISchedulingStore.LoadAsync         ← tranzaksiyadan tashqarida
+        │  2. ISchedulingMapper.BuildProblem     ← EF Id → yadro indeksi
+        │  3. Scheduler.Generate                 ← 6 faza, sof hisob, DB yo'q
+        │  4. ISchedulingMapper.BuildCards       ← yadro indeksi → EF Id
+        │  5. GroupDivisionOverlapValidator.Check
+        │  6. DeleteCards + InsertCards + RebuildOccurrences
+        │                                        ← BITTA tranzaksiyada
+        ▼
+ScheduleGenerationReport (Placed, Unplaced, SoftCost, Cancelled, Messages)
 ```
 
-Ya'ni **generator qoidalarni o'zi bilmaydi** — u validatorga savol beradi.
-Shuning uchun yangi qoida qo'shilsa, generator avtomatik unga bo'ysunadi.
+**Bekor qilish semantikasi:** istisno tashlanmaydi. Bekor qilinganda hisobotda
+`Cancelled = true` bo'ladi va **eski jadval bazada o'zgarishsiz qoladi** — chunki
+yozish bosqichiga umuman yetib borilmaydi.
 
-### Yangi algoritm qo'shish (masalan genetik)
+> **Eski yo'l.** `IScheduleGenerator` / `GreedyScheduleGenerator`
+> (`Name = "Greedy (tezkor)"`) hamon kompilyatsiya qilinadi va DI da ro'yxatdan
+> o'tadi, lekin **`[Obsolete]`** bilan belgilangan: u eski `ScheduleEntry` modeli
+> ustida ishlaydi. Yangi ish uchun ishlatilmaydi.
 
-1. `Generation/GeneticScheduleGenerator.cs` — `IScheduleGenerator` ni implement qiling.
-   `GenerationOptions` da tayyor maydonlar bor: `PopulationSize`, `MutationRate`,
-   `MaxIterations`, `RandomSeed`.
-2. Uzoq davom etadigan jarayonda `progress?.Report(new GenerationProgress(...))` chaqiring —
-   UI progress bar'ni shundan yangilaydi. `ct.ThrowIfCancellationRequested()` ni unutmang.
-3. `ApplicationServiceRegistration.AddApplication()` da ro'yxatdan o'tkazing:
+### Kengaytirish nuqtalari
 
-```csharp
-services.AddScoped<IScheduleGenerator, GreedyScheduleGenerator>();
-services.AddScoped<IScheduleGenerator, GeneticScheduleGenerator>();  // yangi
-```
-
-4. Foydalanuvchiga tanlash imkonini berish uchun **Desktop** dasturidagi
-   (`src/DarsJadvali.Desktop/ViewModels/DashboardViewModel.cs`) ViewModel
-   `IEnumerable<IScheduleGenerator>` ni oladi va `Name` bo'yicha ro'yxat ko'rsatadi.
-   Hozir "Bosh sahifa" da bitta generatorning nomi va tavsifi ko'rsatiladi.
-
-**Muhim:** `Application`, `Infrastructure`, `Desktop` kodining qolgan qismiga tegish
-shart emas. Kengaytirish nuqtasi shunga mo'ljallangan.
-
-Boshqa kengaytirish nuqtalari xuddi shu tarzda ishlaydi:
-
-| Kerak bo'lsa | Nimani implement qilish |
+| Kerak bo'lsa | Nimani o'zgartirish |
 |---|---|
-| Boshqa ma'lumotlar bazasi | `IRepository<T>`, `IUnitOfWork`, `IDatabaseInitializer` |
-| Yangi qoida | `ScheduleValidator` ga yangi `ConflictCodes` + tekshiruv |
-| Yangi algoritm | `IScheduleGenerator` |
-| Boshqa eksport formati | `ISchoolTimetablePdfExporter` yonida yangi eksportchi + `ITimetableExportModelBuilder` modelidan foydalanish |
-| Boshqa interfeys (web, mobil) | `I*Service` larni chaqirish |
+| **Yangi soft qoida** (jarima bilan) | `Scheduling/Constraints/` da `ConstraintBase` dan meros olib yangi sinf yozing, so'ng uni `ConstraintSet.CreateDefault()` ga qo'shing |
+| **Og'irlikni sozlash** | `ConstraintSet.CreateDefault()` dagi `Weight` — [`ALGORITM.md`](ALGORITM.md) §3.2 |
+| **Yangi hard qoida** | `Scheduling/Constraints/HardRules.cs` + `SolutionState.TryApply` invariantlari |
+| **Yadro ↔ baza bog'lanishi** | `Application/Scheduling/SchedulingMapper.cs` — **yagona** ko'prik |
+| Boshqa ma'lumotlar bazasi | `IRepository<T>`, `IUnitOfWork`, `ISchedulingStore`, `ICardOccurrenceProjector` |
+| Qo'lda joylashtirish qoidasi | `ScheduleValidator` ga yangi `ConflictCodes` + tekshiruv |
+| **Yangi chop etish shakli** | `Infrastructure/Export/Printing/Designs/` ga yangi **JSON** qo'shing — kod o'zgartirilmaydi |
+| Boshqa interfeys (web, mobil) | `ICardBoardService`, `IScheduleGenerationService` ni chaqiring |
+
+Yadro **hech qanday tashqi paketga bog'liq emas va EF Core'ni ko'rmaydi** — shuning
+uchun uni bazasiz, UI'siz, alohida sinash mumkin.
 
 ---
 
 ## 6. Testlar
 
-`tests/DarsJadvali.Tests` — xunit. Har bir test uchun **alohida** xotiradagi SQLite bazasi
-(`TestDbFactory`, `DataSource=:memory:` + ochiq ulanish + `EnsureCreated()`),
-DI konteyner esa haqiqiy `AddApplication()` bilan yig'iladi — ya'ni testlar
-soxta (mock) emas, haqiqiy servislar va haqiqiy SQL ustida ishlaydi.
+Ikkita test loyihasi bor.
+
+### `tests/DarsJadvali.Tests`
+
+Har bir test uchun **alohida** xotiradagi SQLite bazasi
+(`TestDbFactory`, `DataSource=:memory:` + ochiq ulanish), DI konteyner esa haqiqiy
+`AddApplication()` bilan yig'iladi — ya'ni testlar soxta (mock) emas, haqiqiy
+servislar va haqiqiy SQL ustida ishlaydi.
 
 | Fayl | Nimani tekshiradi |
 |------|-------------------|
 | `ScheduleValidatorTests` | 10 ta qoidaning har biri + o'z-o'zini ko'chirish holati |
 | `ScheduleServiceTests` | `PlaceAsync` / `MoveAsync` / `RemoveAsync` / `ClearAsync`, `force` mantig'i |
-| `GreedyScheduleGeneratorTests` | Kichik to'plamda konfliktsiz jadval chiqishi |
-| `RepositoryTests` | CRUD, cascade delete, `AutoInclude` navigatsiyalari |
+| `ScheduleSetServiceTests` | Jadval variantlari, `SetActiveAsync` (tranzaksiya + filtrlangan UNIQUE) |
+| `AcademicYearServiceTests` | O'quv yili bilan ishlash |
+| `LessonAvailabilityTests` | Dars soati bo'yicha o'qituvchi bandligi |
+| `DatabaseMigrationTests` | Migratsiyalar va eski ma'lumotni ko'chirish (`LegacyToV2Backfill`) |
+| `RepositoryTests` | CRUD, o'chirish xatti-harakati, `AutoInclude` navigatsiyalari |
+| `PdfExportTests` | Chop etish dvigateli |
+| `UpdateCheckerTests` | Yangilanishni tekshirish (tarmoqsiz, soxta javob bilan) |
+| `GreedyScheduleGeneratorTests` | Eski generator (arxiv qamrovi) |
+
+### `tests/DarsJadvali.Scheduling.Tests`
+
+Yadro testlari — **bazasiz va UI'siz**, sof hisob ustida.
+
+| Fayl | Nimani tekshiradi |
+|------|-------------------|
+| `SlotMaskTests`, `DayBitsTests` | Bitset amallari |
+| `HardConstraintTests` | Hard qoidalar hech qachon buzilmasligi |
+| `DeltaConsistencyTests` | Inkremental jarima hisobi to'liq qayta hisob bilan mos kelishi |
+| `DivisionTagTests` | Guruh bo'linishi mantiqi |
+| `RoomTests` | Hopcroft–Karp xona taqsimlash |
+| `DeterminismTests` | Bir xil `Seed` → **bayt-bayt bir xil** natija |
+| `CancellationTests` | Bekor qilinganda istisno emas, `Cancelled = true` |
+| `VerifierRelaxerTests` | Tashxis fazalari |
+| `IntegrationTests` | To'liq pipeline |
+| `BenchmarkTests` | 30 sinf × 150 guruh × 1170 karta — §6 [`ALGORITM.md`](ALGORITM.md) |
 
 ```bash
 dotnet test
+
+# To'liq benchmark o'lchovi (uzoq davom etadi)
+DJ_BENCH=1 dotnet test --filter Category=Benchmark
 ```
+
+---
+
+## 7. Ma'lum cheklovlar
+
+> Arxitektura hujjati ishlamaydigan narsani "ishlaydi" deb ko'rsatmaydi.
+
+### 7.1 Ikkita model yonma-yon
+
+Eski (`ScheduleEntry`) va yangi (`Lesson`/`Card`/`CardOccurrence`) modellar **bir vaqtda
+tirik**. Bu ataylab: 1-bosqich additiv bo'lgan, foydalanuvchi ma'lumoti yo'qolmasligi
+uchun. Amaldagi natija:
+
+| Nima | Holat |
+|---|---|
+| `ScheduleEntry` entity, `DbSet` va jadval | **Mavjud** (`AppDbContext.cs:28`) |
+| `DropLegacyEntry` migratsiyasi | **Yozilmagan.** `V2_05` raqami esa band (`V2_05_CardLengthAndConstraints`) |
+| `IScheduleService`, `ScheduleValidator`, `TimetableExportModelBuilder` | Eski model ustida ishlaydi |
+| `GreedyScheduleGenerator` | `[Obsolete]`, lekin kompilyatsiya qilinadi va DI da |
+| Desktop "Dars jadvali" ekrani, Web `/api/schedule/*` | Eski modelga tayanadi |
+
+Ya'ni bitta mantiq ikki joyda: bu **texnik qarz**, keyingi bosqichda yopiladi.
+
+### 7.2 Prezentatsiyada ikkita jadval ekrani
+
+| Ekran | ViewModel | Undo/redo |
+|---|---|---|
+| **Bosh sahifa** dagi jadval taxtasi | `TimetableBoardViewModel` | **Bor** (100 qadam) |
+| Chap menyudagi **"Dars jadvali"** | `TimetableViewModel` | **Yo'q** — `CommandHistory` dan o'tmaydi |
+
+### 7.3 Sinalmagan joylar
+
+- **Sudrab ko'chirish sichqoncha bilan qo'lda sinalmagan.** Mexanika (`DragSession`)
+  yozilgan va mantiqiy testlar bor, lekin uchdan-uchgacha qo'lda sinov o'tkazilmagan.
+- `V2_05`–`V2_07` migratsiyalarining `Down()` metodlari to'liq oldinga/orqaga
+  aylanish sinovidan o'tkazilmagan (`V2_01`–`V2_04` o'tkazilgan).
+
+### 7.4 Yadroda qurilmagan cheklovlar
+
+Tushlik oynasi (`C-LUN-*`), binolar va binolararo ko'chish (`C-BLD-*`),
+kartalararo munosabatlar (`C-REL-*`), o'quvchi darajasidagi cheklovlar (`C-STU-*`),
+A/B hafta cheklovlari. Shuningdek `TimeOff.Penalty` yadroga sonli qiymat sifatida
+uzatilmaydi. Batafsil: [`ALGORITM.md`](ALGORITM.md) §7.
+
+### 7.5 Boshqa
+
+- **2-smena taqsimoti:** `Shift` entity va smena filtri bor, lekin eski bazadan
+  ko'chirishda barcha dars soatlari **1-smenaga** tushadi; taqsimlash UI'si yo'q.
+- **Parallellik:** yadro bitta oqimda ishlaydi (`Parallelism` sozlamasi yo'q).
+- **Yangilanishni tekshirish** — dasturdagi yagona tarmoq nuqtasi ("Dastur haqida"
+  sahifasi ochilganda fon rejimida `github.com` ga so'rov yuboriladi).
+
+---
+
+Tegishli hujjatlar:
+[`CONTRACT.md`](CONTRACT.md) · [`ALGORITM.md`](ALGORITM.md) ·
+[`MIGRATSIYA.md`](MIGRATSIYA.md) · [`FOYDALANISH.md`](FOYDALANISH.md)

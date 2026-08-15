@@ -1,8 +1,17 @@
-# Avalonia ko'chirish qo'llanmasi — MAJBURIY
+# Avalonia ko'chirish — retseptlar va tarix
 
-> Bu hujjat `DarsJadvali.Desktop` (Avalonia) loyihasi uchun HAKAM.
-> Quyidagi retseptlar **shu Mac'da haqiqiy ishga tushirib tasdiqlangan** — ularni
-> o'zgartirmang, "yaxshiroq" variant izlab vaqt yo'qotmang.
+> ## HOLAT: KO'CHIRISH TUGALLANGAN
+>
+> `DarsJadvali.Desktop` (Avalonia) — **asosiy va yagona ish stoli dasturi**.
+> Eski `src/DarsJadvali.UI` (WPF) `DarsJadvali.sln` **dan chiqarilgan**: papka diskda
+> tarixiy nusxa sifatida turibdi, lekin yig'ilmaydi va unga tegilmaydi.
+>
+> Shu sababli bu hujjat endi **"nima qilish kerak" rejasi emas**, balki:
+> 1. **Ishlaydigan retseptlar to'plami** (§1–§3, §5–§6) — yangi ekran yozayotganda kerak;
+> 2. **Ko'chirish tarixi** — qanday qarorlar qabul qilingani.
+>
+> Ba'zi bo'limlar (ayniqsa **§4**) ko'chirish boshlanishida yozilgan va **amalda
+> boshqacha hal qilingan** — o'sha joyda buni ochiq yozib qo'yganmiz.
 
 Maqsad: **macOS uchun alohida dastur, Windows uchun alohida dastur.** Ikkalasi bir xil
 vazifani bajaradi, bitta manba kodidan yig'iladi:
@@ -12,21 +21,27 @@ DarsJadvali.app  (macOS: arm64 + x64)
 DarsJadvali.exe  (Windows: x64 + x86)
 ```
 
-`Domain`, `Application`, `Infrastructure` qatlamlari **o'zgarmaydi** — ular allaqachon
-platformadan mustaqil va sinovdan o'tgan.
+`Domain`, `Application`, `Infrastructure` qatlamlari **o'zgarmadi** — ular allaqachon
+platformadan mustaqil va sinovdan o'tgan edi.
 
 ---
 
 ## 1. Tasdiqlangan paketlar va sozlash
 
-`.csproj` allaqachon yaratilgan (o'zgartirmang). Paketlar:
+`.csproj` allaqachon yaratilgan (o'zgartirmang). Paketlar —
+`src/DarsJadvali.Desktop/DarsJadvali.Desktop.csproj` bilan tasdiqlangan:
 
 | Paket | Versiya |
 |---|---|
 | Avalonia, Avalonia.Desktop, Avalonia.Fonts.Inter, Avalonia.Controls.DataGrid | 11.2.3 |
+| Avalonia.Diagnostics (faqat `Debug`) | 11.2.3 |
 | Material.Avalonia, Material.Avalonia.DataGrid | 3.9.2 |
 | CommunityToolkit.Mvvm | 8.3.2 |
 | Microsoft.Extensions.Hosting | 8.0.1 |
+
+Muhim `PropertyGroup` qiymatlari: `OutputType=WinExe`, `AssemblyName=DarsJadvali`,
+`AvaloniaUseCompiledBindingsByDefault=true`,
+`RuntimeIdentifiers=osx-arm64;osx-x64;win-x64;win-x86`.
 
 ### `App.axaml` — AYNAN shunday (tasdiqlangan)
 
@@ -101,14 +116,32 @@ bir xil ishlaydi — o'zgartirish shart emas.
 ## 4. Maktab jadvali to'ri — `SharedSizeGroup` siz
 
 WPF versiyasida ustunlarni tekislash uchun `SharedSizeGroup` ishlatilgan.
-**Avalonia'da bu yo'q.** To'g'ri yechim — butun jadvalni **bitta `Grid`** qilib qurish:
+**Avalonia'da bu yo'q.**
+
+> ### ⚠️ BU BO'LIM ESKIRGAN — amalda boshqacha qilindi
+>
+> Quyidagi "butun jadvalni bitta `Grid` qilib qurish" tavsiyasi ko'chirish
+> boshlanishida yozilgan va **qabul qilinmadi**. Sabab: bitta `Grid` da
+> `sinflar × dars soatlari` kataklarining **hammasi** bir vaqtda quriladi —
+> 30 sinfli maktabda bu minglab element degani va interfeys sekinlashadi.
+>
+> **Haqiqiy yechim — virtualizatsiya.** `Views/TimetableBoardView.axaml` da
+> qatorlar ham, joylashtirilmagan kartalar paneli ham **`VirtualizingStackPanel`**
+> ichida: ekranda ko'rinmagan qator **umuman qurilmaydi**.
+> Ustun kengliklari `ViewModels/TimetableMetrics.cs` dagi **hisoblangan piksel
+> qiymatlar** bilan tekislanadi (zoom 50–200% va "Zich/Oddiy/Keng" zichligiga
+> qarab qayta hisoblanadi) — bu `SharedSizeGroup` ning o'rnini bosadi.
+>
+> Yangi to'r yozayotgan bo'lsangiz **`TimetableBoardView.axaml` va
+> `TimetableBoardViewModel.cs` dan nusxa oling**, quyidagi tavsifdan emas.
+
+<details>
+<summary>Dastlabki (amalga oshmagan) reja — tarix uchun</summary>
 
 - `ColumnDefinitions` = `Sinf` | `Soat` | har bir faol ish kuni uchun bittadan
 - `RowDefinitions` = 1 ta sarlavha qatori + (sinflar soni × maksimal dars soati)
 - Sinf nomi katagi: `Grid.RowSpan="{maksimal dars soati}"`
 - Kataklarni kod tomondan (`ViewModel` yoki code-behind) joylashtiring
-
-Bu foydalanuvchi so'ragan ko'rinishga aynan mos keladi:
 
 ```
 ┌───────┬─────────┬──────────┬──────────┬────────────┐
@@ -123,14 +156,41 @@ Bu foydalanuvchi so'ragan ko'rinishga aynan mos keladi:
 ```
 
 Sarlavha qatori scroll qilganda joyida qolishi uchun: sarlavhani alohida `Grid` da
-`ScrollViewer` dan **tashqarida** qo'ying va ustun kengliklarini ikkalasida ham
-**bir xil piksel qiymatlar** bilan bering (`SharedSizeGroup` o'rniga).
+`ScrollViewer` dan **tashqarida** qo'yish va ustun kengliklarini ikkalasida ham
+bir xil piksel qiymatlar bilan berish.
+
+</details>
+
+### 4.1 Amalda qurilgan jadval taxtasi
+
+Fayllar: `Views/TimetableBoardView.axaml(.cs)`, `ViewModels/TimetableBoardViewModel.cs`,
+`Services/Timetable/`.
+
+| Xususiyat | Qanday qilingan |
+|---|---|
+| Virtualizatsiya | `VirtualizingStackPanel` (qatorlar + joylashtirilmaganlar paneli) |
+| Ko'chirish | **"Karta qo'lda" (card-in-hand)** — `Services/Timetable/DragSession.cs`. HTML5 drag-drop **EMAS**: `PointerPressed` bilan olinadi, `PointerMoved` bilan yuradi, yana `PointerPressed` bilan qo'yiladi. `PointerReleased` ishlatilmaydi |
+| Baholash | `TimetableBoard.Evaluate(...)` → `PlacementRating` (`Forbidden`/`Allowed`/`Preferred`) → konverter → kulrang/ko'k/yashil |
+| Modifikatorlar | **SHIFT** — mumkin joylarni yoritish; **CTRL** — bir `LessonKey` dagi kartalarni birga olish; **ESC** — bekor qilish |
+| Undo/redo | `Services/Timetable/CommandHistory.cs`, `DefaultLimit = 100`. `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z`) |
+| Zoom | `ViewModels/TimetableMetrics.cs` — `MinZoom = 0.5`, `MaxZoom = 2.0`, `ZoomStep = 0.1`; `Ctrl+0` — qaytarish |
+| Smena | `RebuildShifts()` — smena tanlagichi faqat `ShiftList.Count > 1` bo'lsa ko'rinadi |
+
+> **Rang qoidasi (M-06):** ViewModel `IBrush` **qaytarmaydi** — u `PlacementRating`
+> yoki `"#RRGGBB"` satr beradi, rangni `Converters/` dagi konverter hal qiladi.
+> Batafsil: [`CONTRACT.md`](CONTRACT.md) §1.4.
+
+> **Bir vaqtdalik qoidasi:** sahifaning barcha async amallari
+> `Services/AsyncOperationRunner.cs` orqali o'tadi — bitta DI qamrovida bitta
+> `DbContext` bo'lgani uchun ikki amal bir vaqtda ishlay olmaydi.
+> Batafsil: [`CONTRACT.md`](CONTRACT.md) §1.5.
 
 ---
 
 ## 5. Dialoglar — `IDialogService`
 
-Avalonia'da `MessageBox` yo'q. Quyidagi interfeys yoziladi (tashqi paketsiz):
+Avalonia'da `MessageBox` yo'q. Quyidagi interfeys **yozilgan va ishlatilmoqda**
+(`src/DarsJadvali.Desktop/Services/`, tashqi paketsiz):
 
 ```csharp
 namespace DarsJadvali.Desktop.Services;
@@ -158,7 +218,13 @@ Egasi (owner) — `IClassicDesktopStyleApplicationLifetime.MainWindow`.
 - **Ma'lumotlar bazasi yo'li:** `InfrastructureServiceRegistration.DefaultDbPath`
   allaqachon cross-platform (`Environment.SpecialFolder.LocalApplicationData`):
   - Windows: `%LOCALAPPDATA%\DarsJadvali\darsjadvali.db`
-  - macOS: `~/Library/Application Support/DarsJadvali/darsjadvali.db`
+  - macOS: **`~/Library/Application Support/DarsJadvali/darsjadvali.db`**
+  - Linux: **`~/.local/share/DarsJadvali/darsjadvali.db`**
+
+  > **Diqqat.** .NET macOS'da `LocalApplicationData` ni **`~/Library/Application
+  > Support`** ga moslashtiradi — bu macOS'ning odatiy joyi. Foydalanuvchiga
+  > yo'lni aytayotganda shuni bering (papka Finder'da yashirin —
+  > `Shift+Cmd+G` bilan oching).
 - **Menyu paneli:** macOS'da menyu ekran tepasida bo'ladi. Hozircha `NativeMenu`
   qo'shmang — keraksiz murakkablik.
 - **Fayl saqlash dialogi** (PDF eksport uchun): `TopLevel.GetTopLevel(control)!
@@ -183,3 +249,16 @@ sinov uchun; o'zgaruvchi berilmasa dastur normal ishlaydi.
 
 Shu yo'l bilan **oyna haqiqatan ochilganini va ishga tushishda istisno
 bo'lmaganini** tasdiqlash mumkin — WPF'da bunday imkoniyat yo'q edi.
+
+---
+
+## 8. Ma'lum cheklovlar
+
+| Cheklov | Tafsilot |
+|---|---|
+| **Sudrab ko'chirish qo'lda sinalmagan** | Jadval taxtasidagi "karta qo'lda" mexanikasi (§4.1) kod darajasida yozilgan va mantiqiy testlar bilan qoplangan, lekin **haqiqiy sichqoncha bilan uchdan-uchgacha sinov o'tkazilmagan**. `DARSJADVALI_AUTOCLOSE` faqat oyna ochilishini tekshiradi, o'zaro ta'sirni emas |
+| **Ikkita jadval ekrani** | Chap menyudagi eski **"Dars jadvali"** (`TimetableViewModel`) va Bosh sahifadagi yangi **jadval taxtasi** (`TimetableBoardViewModel`) yonma-yon turibdi. Eskisida **undo/redo yo'q** — u `CommandHistory` dan o'tmay, to'g'ridan-to'g'ri `_board.MoveCard(card, null)` chaqiradi va bazadan qayta yuklaydi |
+| **`RemoveCardCommand`** | `Services/Timetable/TimetableCommands.cs` da e'lon qilingan, lekin **hech qayerda ishlatilmaydi** — o'lik kod |
+| **`TimeLimit` UI'da yo'q** | Generatsiya vaqt chegarasi Web API'da bor (`TimeLimitSeconds`), Desktop'da esa sozlanmaydi — faqat "Bekor qilish" tugmasi |
+| **`NativeMenu`** | macOS'ning yuqori menyu paneli qo'shilmagan (ataylab — keraksiz murakkablik) |
+| **Eski WPF loyihasi** | `src/DarsJadvali.UI` diskda qolgan, lekin `.sln` da yo'q va yig'ilmaydi. Uni yig'adigan `build/publish.ps1` / `publish.bat` skriptlari ham eskirgan |
