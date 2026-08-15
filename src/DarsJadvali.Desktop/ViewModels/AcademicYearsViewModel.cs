@@ -82,8 +82,6 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     /// <summary>Tanlangan o'quv yilining dars jadvallari.</summary>
     public ObservableCollection<ScheduleRowViewModel> Schedules { get; } = new();
 
-    /// <summary>Amal bajarilmayotgan payt — tugmalar yoqiladi.</summary>
-    public bool IsNotBusy => !IsBusy;
 
     /// <summary>O'quv yili tanlanganmi (va amal bajarilmayaptimi).</summary>
     public bool HasSelectedYear => !IsBusy && SelectedYear is not null;
@@ -97,10 +95,8 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
         : $"«{SelectedYear.Name}» jadvallari";
 
     /// <inheritdoc />
-    public override async Task LoadAsync(CancellationToken ct = default)
-    {
-        await RefreshAsync(ct).ConfigureAwait(true);
-    }
+    public override Task LoadAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(RefreshCoreAsync, ct);
 
     /// <inheritdoc />
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
@@ -109,7 +105,6 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
 
         if (e.PropertyName == nameof(IsBusy))
         {
-            OnPropertyChanged(nameof(IsNotBusy));
             OnPropertyChanged(nameof(HasSelectedYear));
             OnPropertyChanged(nameof(HasSelectedSchedule));
         }
@@ -123,12 +118,18 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
         }
 
         IsScheduleEditing = false;
-        _ = LoadSchedulesAsync(value?.Id);
+
+        // Setterdan `await` qilib bo'lmaydi — amal navbatga qo'yiladi (M-01).
+        var yearId = value?.Id;
+        _ = RunExclusiveAsync(ct => LoadSchedulesAsync(yearId, ct));
     }
 
     /// <summary>O'quv yillari ro'yxatini bazadan qayta o'qiydi.</summary>
-    [RelayCommand]
-    private async Task RefreshAsync(CancellationToken ct = default)
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task RefreshAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(RefreshCoreAsync, ct);
+
+    private async Task RefreshCoreAsync(CancellationToken ct)
     {
         var keepYearId = SelectedYear?.Id;
 
@@ -240,7 +241,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Tanlangan o'quv yilini tahrirlash shaklini ochadi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task EditYearAsync()
     {
         var target = SelectedYear;
@@ -267,7 +268,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>O'quv yilini qo'shadi yoki nomini o'zgartiradi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveYearAsync(CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(EditYearName))
@@ -346,7 +347,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>O'quv yilini (ichidagi hamma narsa bilan) o'chiradi — avval tasdiq so'raladi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DeleteYearAsync()
     {
         var target = SelectedYear;
@@ -411,7 +412,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     // ================= Dars jadvali amallari =================
 
     /// <summary>Tanlangan yilda yangi jadval qo'shish shaklini ochadi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task NewScheduleAsync()
     {
         if (SelectedYear is null)
@@ -427,7 +428,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Tanlangan jadval nomini tahrirlash shaklini ochadi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task EditScheduleAsync()
     {
         var target = SelectedSchedule;
@@ -452,7 +453,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Jadvalni qo'shadi yoki nomini o'zgartiradi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveScheduleAsync(CancellationToken ct = default)
     {
         if (SelectedYear is null)
@@ -508,7 +509,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Jadvalning barcha darslari bilan nusxasini yaratadi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DuplicateScheduleAsync(CancellationToken ct = default)
     {
         var target = SelectedSchedule;
@@ -547,7 +548,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Tanlangan jadvalni faol qiladi (butun dasturda shu jadval ko'rsatiladi).</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task ActivateScheduleAsync(CancellationToken ct = default)
     {
         var target = SelectedSchedule;
@@ -589,7 +590,7 @@ public sealed partial class AcademicYearsViewModel : ViewModelBase
     }
 
     /// <summary>Jadvalni barcha darslari bilan o'chiradi — avval tasdiq so'raladi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DeleteScheduleAsync()
     {
         var target = SelectedSchedule;

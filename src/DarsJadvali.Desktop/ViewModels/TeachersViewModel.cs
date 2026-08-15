@@ -55,8 +55,6 @@ public sealed partial class TeachersViewModel : ViewModelBase
     /// <summary>Rang tanlash uchun tayyor ranglar.</summary>
     public IReadOnlyList<ColorOption> Colors => ColorPalette.All;
 
-    /// <summary>Amal bajarilmayotgan payt — tugmalar yoqiladi.</summary>
-    public bool IsNotBusy => !IsBusy;
 
     /// <summary>Ro'yxatdan biror o'qituvchi tanlanganmi (va band emasmi).</summary>
     public bool HasSelection => !IsBusy && SelectedTeacher is not null;
@@ -72,12 +70,11 @@ public sealed partial class TeachersViewModel : ViewModelBase
 
         if (e.PropertyName == nameof(IsBusy))
         {
-            OnPropertyChanged(nameof(IsNotBusy));
             OnPropertyChanged(nameof(HasSelection));
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task RefreshAsync(CancellationToken ct = default)
     {
         try
@@ -124,7 +121,7 @@ public sealed partial class TeachersViewModel : ViewModelBase
     private ColorOption NextFreeColor()
         => ColorPalette.NextFree(Teachers.Select(t => t.ColorCode));
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task EditAsync(Teacher? teacher)
     {
         var target = teacher ?? SelectedTeacher;
@@ -150,7 +147,7 @@ public sealed partial class TeachersViewModel : ViewModelBase
         _editingId = 0;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveAsync(CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(EditFullName))
@@ -216,7 +213,7 @@ public sealed partial class TeachersViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DeleteAsync(Teacher? teacher)
     {
         var target = teacher ?? SelectedTeacher;

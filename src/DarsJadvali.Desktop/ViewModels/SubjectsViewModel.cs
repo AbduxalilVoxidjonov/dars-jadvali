@@ -52,8 +52,6 @@ public sealed partial class SubjectsViewModel : ViewModelBase
     /// <summary>Rang tanlash uchun tayyor ranglar.</summary>
     public IReadOnlyList<ColorOption> Colors => ColorPalette.All;
 
-    /// <summary>Amal bajarilmayotgan payt — tugmalar yoqiladi.</summary>
-    public bool IsNotBusy => !IsBusy;
 
     /// <summary>Ro'yxatdan biror fan tanlanganmi (va band emasmi).</summary>
     public bool HasSelection => !IsBusy && SelectedSubject is not null;
@@ -69,12 +67,11 @@ public sealed partial class SubjectsViewModel : ViewModelBase
 
         if (e.PropertyName == nameof(IsBusy))
         {
-            OnPropertyChanged(nameof(IsNotBusy));
             OnPropertyChanged(nameof(HasSelection));
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task RefreshAsync(CancellationToken ct = default)
     {
         try
@@ -120,7 +117,7 @@ public sealed partial class SubjectsViewModel : ViewModelBase
     private ColorOption NextFreeColor()
         => ColorPalette.NextFree(Subjects.Select(s => s.ColorCode));
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task EditAsync(Subject? subject)
     {
         var target = subject ?? SelectedSubject;
@@ -145,7 +142,7 @@ public sealed partial class SubjectsViewModel : ViewModelBase
         _editingId = 0;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveAsync(CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(EditName))
@@ -236,7 +233,7 @@ public sealed partial class SubjectsViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DeleteAsync(Subject? subject)
     {
         var target = subject ?? SelectedSubject;

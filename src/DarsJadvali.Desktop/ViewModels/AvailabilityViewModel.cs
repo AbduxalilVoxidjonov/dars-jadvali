@@ -28,6 +28,9 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
     private readonly IWorkDayService _workDays;
     private readonly IDialogService _dialogs;
 
+    /// <summary>Sahifa yuklanayotgan payt — tanlov o'zgarishi qayta yuklashni ishga tushirmaydi.</summary>
+    private bool _isInitializing;
+
     [ObservableProperty]
     private Teacher? _selectedTeacher;
 
@@ -63,11 +66,15 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
         ? "Ish soatlari"
         : "Ish soatlari — " + SelectedTeacher.FullName;
 
-    public override async Task LoadAsync(CancellationToken ct = default)
+    public override Task LoadAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(LoadCoreAsync, ct);
+
+    private async Task LoadCoreAsync(CancellationToken ct)
     {
         try
         {
             IsBusy = true;
+            _isInitializing = true;
 
             await BuildColumnsAsync(ct).ConfigureAwait(true);
 
@@ -85,6 +92,11 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
             {
                 StatusMessage = "O'qituvchilar ro'yxati bo'sh. Avval «O'qituvchilar» bo'limiga o'qituvchi qo'shing.";
             }
+
+            _isInitializing = false;
+
+            // Qayta yuklash setter orqali emas, shu yerda — navbat ichida ketma-ket bajariladi.
+            await ReloadRowsCoreAsync(ct).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -96,6 +108,7 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
         }
         finally
         {
+            _isInitializing = false;
             IsBusy = false;
         }
     }
@@ -103,7 +116,14 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
     partial void OnSelectedTeacherChanged(Teacher? value)
     {
         OnPropertyChanged(nameof(HeaderText));
-        _ = ReloadRowsAsync();
+
+        if (_isInitializing)
+        {
+            return;
+        }
+
+        // Setterdan `await` qilib bo'lmaydi — amal navbatga qo'yiladi (M-01).
+        _ = RunExclusiveAsync(ReloadRowsCoreAsync);
     }
 
     /// <summary>Dars soati ustunlarini (raqam + vaqt) tayyorlaydi.</summary>
@@ -130,8 +150,11 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
     }
 
     /// <summary>Tanlangan o'qituvchi bo'yicha kunlar to'rini qayta yuklaydi.</summary>
-    [RelayCommand]
-    private async Task ReloadRowsAsync()
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ReloadRowsAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ReloadRowsCoreAsync, ct);
+
+    private async Task ReloadRowsCoreAsync(CancellationToken ct)
     {
         Days.Clear();
         HasDays = false;
@@ -147,12 +170,12 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
 
             if (Columns.Count == 0)
             {
-                await BuildColumnsAsync(CancellationToken.None).ConfigureAwait(true);
+                await BuildColumnsAsync(ct).ConfigureAwait(true);
             }
 
             var lessonNumbers = Columns.Select(c => c.LessonNumber).ToList();
             var days = await _availabilities
-                .GetLessonAvailabilityAsync(SelectedTeacher.Id)
+                .GetLessonAvailabilityAsync(SelectedTeacher.Id, ct)
                 .ConfigureAwait(true);
 
             foreach (var day in days)
@@ -178,6 +201,10 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
                     : $"{SelectedTeacher.FullName}: {restricted} ta kunda cheklov bor.";
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Boshqa o'qituvchi tanlandi — bu natija kerak emas.
+        }
         catch (Exception ex)
         {
             await _dialogs.ErrorAsync("Ish soatlarini yuklashda xatolik yuz berdi.\n\n" + ex.Message);
@@ -188,7 +215,7 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveAsync(CancellationToken ct = default)
     {
         if (SelectedTeacher is null)
@@ -251,7 +278,7 @@ public sealed partial class AvailabilityViewModel : ViewModelBase
     }
 
     /// <summary>Saqlanmagan o'zgarishlarni bekor qiladi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task CancelAsync()
     {
         await ReloadRowsAsync().ConfigureAwait(true);

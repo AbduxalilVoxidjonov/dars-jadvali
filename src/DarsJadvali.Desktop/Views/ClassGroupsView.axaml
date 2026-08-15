@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
              xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
-             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             xmlns:svc="clr-namespace:DarsJadvali.Application.Services;assembly=DarsJadvali.Application"
              x:Class="DarsJadvali.Desktop.Views.ClassGroupsView"
              x:DataType="vm:ClassGroupsViewModel"
              x:CompileBindings="True">
@@ -54,11 +54,14 @@
               BorderThickness="1">
       <DataGrid.Columns>
         <DataGridTextColumn Header="Sinf" Width="*"
-                            Binding="{Binding Name, DataType=ent:ClassGroup}" />
-        <DataGridTextColumn Header="Xona" Width="150"
-                            Binding="{Binding RoomNumber, DataType=ent:ClassGroup}" />
-        <DataGridTextColumn Header="O'quvchilar soni" Width="170"
-                            Binding="{Binding StudentCount, DataType=ent:ClassGroup}" />
+                            Binding="{Binding Name, DataType=vm:ClassRowViewModel}" />
+        <DataGridTextColumn Header="Xona" Width="130"
+                            Binding="{Binding RoomNumber, DataType=vm:ClassRowViewModel}" />
+        <DataGridTextColumn Header="O'quvchilar soni" Width="150"
+                            Binding="{Binding StudentCount, DataType=vm:ClassRowViewModel}" />
+        <!-- Smena yangi (v2) modeldan keladi; "—" — hali tayinlanmagan. -->
+        <DataGridTextColumn Header="Smena" Width="150"
+                            Binding="{Binding ShiftName, DataType=vm:ClassRowViewModel}" />
       </DataGrid.Columns>
     </DataGrid>
 
@@ -95,6 +98,30 @@
         <TextBox Text="{Binding EditStudentCount}"
                  Watermark="O'quvchilar soni"
                  Margin="0,12,0,0" />
+
+        <!-- Smena tanlash: qiymat yangi (v2) SchoolClass.ShiftId ga yoziladi. -->
+        <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasShifts}">
+          <TextBlock Text="Smena"
+                     FontSize="12"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+          <ComboBox ItemsSource="{Binding Shifts}"
+                    SelectedItem="{Binding EditShift, Mode=TwoWay}"
+                    IsEnabled="{Binding CanEditShift}"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,4,0,0">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="svc:ClassShiftOption">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="Yangi sinf avval saqlanadi — smenani keyin tanlaysiz."
+                     FontSize="12"
+                     TextWrapping="Wrap"
+                     Margin="0,4,0,0"
+                     Foreground="{DynamicResource AppMutedTextBrush}"
+                     IsVisible="{Binding !CanEditShift}" />
+        </StackPanel>
 
         <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
           <Button Content="Bekor qilish"

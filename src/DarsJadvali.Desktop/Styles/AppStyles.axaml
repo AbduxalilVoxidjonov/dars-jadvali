@@ -24,6 +24,8 @@
     <conv:ColorCodeToBrushConverter        x:Key="ColorCodeToBrush" />
     <conv:WeekDayToUzbekConverter          x:Key="WeekDayToUzbek" />
     <conv:ConflictSeverityToBrushConverter x:Key="ConflictSeverityToBrush" />
+    <conv:EnumToBooleanConverter           x:Key="EnumToBoolean" />
+    <conv:PlacementRatingToBrushConverter  x:Key="PlacementRatingToBrush" />
 
     <!-- ============ Matn uslublari ============ -->
     <!-- Ishlatish: Theme="{StaticResource AppPageTitle}"  yoki  Classes="AppPageTitle" -->

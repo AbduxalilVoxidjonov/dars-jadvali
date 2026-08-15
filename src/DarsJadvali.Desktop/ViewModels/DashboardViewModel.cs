@@ -2,43 +2,45 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DarsJadvali.Application.Board;
 using DarsJadvali.Application.Export;
-using DarsJadvali.Application.Generation;
+using DarsJadvali.Application.Scheduling;
 using DarsJadvali.Application.Services;
 using DarsJadvali.Application.Validation;
 using DarsJadvali.Desktop.Services;
-using DarsJadvali.Domain.Entities;
-using DarsJadvali.Domain.Enums;
+using DarsJadvali.Desktop.Services.Timetable;
+using DarsJadvali.Infrastructure.Export;
+using DarsJadvali.Scheduling.Pipeline;
 
 namespace DarsJadvali.Desktop.ViewModels;
 
-/// <summary>Bosh sahifa: umumiy ko'rsatkichlar, maktab jadvali, avtomatik tuzish, tekshiruv va PDF.</summary>
+/// <summary>Bosh sahifa: umumiy ko'rsatkichlar, jadval yadrosi, avtomatik tuzish, tekshiruv va PDF.</summary>
+/// <remarks>
+/// <para>
+/// M-04: maktab jadvalini chizish endi bu ViewModel'ning ishi emas — u
+/// <see cref="TimetableBoardViewModel"/> ga topshirilgan (virtualizatsiyalangan, tahrirlanadigan to'r).
+/// </para>
+/// <para>
+/// Generatsiya <b>yangi</b> <see cref="IScheduleGenerationService"/> ga ulangan
+/// (<c>Lesson</c> + <c>Card</c> modeli). Eski <c>IScheduleGenerator</c> (<c>[Obsolete]</c>)
+/// Desktop'dan butunlay olib tashlandi.
+/// </para>
+/// </remarks>
 public sealed partial class DashboardViewModel : ViewModelBase
 {
-    private const string NoLessonsMessage =
-        "Hali birorta dars qo'yilmagan. «Dars jadvali» sahifasidan qo'lda qo'shing " +
-        "yoki yuqoridagi «Avtomatik tuzish» tugmasini bosing.";
-
-    private const string NoClassGroupsMessage =
-        "Hali birorta sinf qo'shilmagan. Avval «Sinflar» sahifasidan sinf qo'shing.";
-
     private readonly ITeacherService _teachers;
     private readonly ISubjectService _subjects;
     private readonly IClassGroupService _classGroups;
     private readonly IAssignmentService _assignments;
-    private readonly IScheduleService _schedule;
-    private readonly IWorkDayService _workDays;
-    private readonly IScheduleValidator _validator;
-    private readonly IScheduleGenerator _generator;
-    private readonly ISchoolTimetablePdfExporter _pdfExporter;
+    private readonly IScheduleSetService _schedules;
+    private readonly ICardBoardService _cards;
+    private readonly IScheduleGenerationService _generation;
+    private readonly IPlanCapacityService _capacity;
+    private readonly IBoardCardRewriter _rewriter;
+    private readonly IScopedTimetablePdfExporter _pdfExporter;
     private readonly IDialogService _dialogs;
-    private readonly MainViewModel _main;
-
-    private readonly List<ClassTimetableViewModel> _allTimetables = new();
-    private readonly List<string> _dayHeaders = new();
 
     private CancellationTokenSource? _generationCts;
-    private bool _isRefreshingFilters;
 
     [ObservableProperty]
     private int _teacherCount;
@@ -70,11 +72,67 @@ public sealed partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private double _generationProgressMax = 100;
 
+    /// <summary>Joriy fazaning o'zbekcha nomi ("Optimallashtirish").</summary>
+    [ObservableProperty]
+    private string _generationPhase = string.Empty;
+
+    /// <summary>Foiz matni ("64%").</summary>
+    [ObservableProperty]
+    private string _generationPercentText = string.Empty;
+
     [ObservableProperty]
     private string _generationMessage = string.Empty;
 
     [ObservableProperty]
     private bool _hasGenerationMessage;
+
+    /// <summary>Determinizm urug'i — bir xil urug' + bir xil ma'lumot → bir xil jadval.</summary>
+    [ObservableProperty]
+    private int _seed = 12345;
+
+    /// <summary>Qidiruv byudjeti (aSc "Complexity of generation").</summary>
+    [ObservableProperty]
+    private ComplexityOption? _selectedComplexity;
+
+    /// <summary>Qulflangan kartochkalar joyida qolsinmi.</summary>
+    [ObservableProperty]
+    private bool _keepLocked = true;
+
+    /// <summary>To'liq bo'lmagan yechim ham saqlansinmi.</summary>
+    [ObservableProperty]
+    private bool _savePartial = true;
+
+    /// <summary>Generatsiya hisoboti bormi.</summary>
+    [ObservableProperty]
+    private bool _hasGenerationReport;
+
+    /// <summary>"Joylashgan / jami" matni.</summary>
+    [ObservableProperty]
+    private string _generationSummary = string.Empty;
+
+    /// <summary>Yakuniy soft jarima matni.</summary>
+    [ObservableProperty]
+    private string _softCostText = string.Empty;
+
+    /// <summary>Joylashtirilmagan darslar ro'yxati bo'sh emasmi.</summary>
+    [ObservableProperty]
+    private bool _hasUnplacedLessons;
+
+    /// <summary>Buzilgan qat'iy cheklovlar bormi.</summary>
+    [ObservableProperty]
+    private bool _hasHardViolations;
+
+    /// <summary>Generatsiyadan oldingi tekshiruv xatolari bormi.</summary>
+    [ObservableProperty]
+    private bool _hasVerificationFaults;
+
+    /// <summary>Yumshatish tavsiyalari bormi.</summary>
+    [ObservableProperty]
+    private bool _hasRelaxationSuggestions;
+
+    /// <summary>Jarima taqsimoti bormi.</summary>
+    [ObservableProperty]
+    private bool _hasPenaltyBreakdown;
 
     [ObservableProperty]
     private string _validationSummary = string.Empty;
@@ -82,18 +140,17 @@ public sealed partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasValidationResult;
 
+    /// <summary>Sig'im ogohlantirishlari bormi ("5-A: 47 soat, 35 ta slot").</summary>
     [ObservableProperty]
-    private ClassFilterOption? _selectedClassFilter;
+    private bool _hasCapacityWarnings;
 
+    /// <summary>Sig'im tekshiruvining qisqacha xulosasi.</summary>
     [ObservableProperty]
-    private bool _isTimetableEmpty = true;
+    private string _capacitySummary = string.Empty;
 
+    /// <summary>Sig'im tekshiruvi hech bo'lmasa bir marta bajarildimi.</summary>
     [ObservableProperty]
-    private string _timetableEmptyMessage = NoLessonsMessage;
-
-    /// <summary>Maktab jadvalining joriy holati — View shu asosda to'rni quradi.</summary>
-    [ObservableProperty]
-    private SchoolTimetableSnapshot? _timetable;
+    private bool _hasCapacityResult;
 
     /// <summary>Yangi bosh sahifa ViewModel'i yaratadi.</summary>
     public DashboardViewModel(
@@ -101,59 +158,96 @@ public sealed partial class DashboardViewModel : ViewModelBase
         ISubjectService subjects,
         IClassGroupService classGroups,
         IAssignmentService assignments,
-        IScheduleService schedule,
-        IWorkDayService workDays,
-        IScheduleValidator validator,
-        IScheduleGenerator generator,
-        ISchoolTimetablePdfExporter pdfExporter,
+        IScheduleSetService schedules,
+        ICardBoardService cards,
+        IScheduleGenerationService generation,
+        IPlanCapacityService capacity,
+        IBoardCardRewriter rewriter,
+        IScopedTimetablePdfExporter pdfExporter,
         IDialogService dialogs,
-        MainViewModel main)
+        TimetableBoardViewModel board)
     {
         _teachers = teachers;
         _subjects = subjects;
         _classGroups = classGroups;
         _assignments = assignments;
-        _schedule = schedule;
-        _workDays = workDays;
-        _validator = validator;
-        _generator = generator;
+        _schedules = schedules;
+        _cards = cards;
+        _generation = generation;
+        _capacity = capacity;
+        _rewriter = rewriter;
         _pdfExporter = pdfExporter;
         _dialogs = dialogs;
-        _main = main;
+        Board = board;
+
+        foreach (var option in ComplexityOption.All)
+        {
+            Complexities.Add(option);
+        }
+
+        SelectedComplexity = Complexities.FirstOrDefault(c => c.Value == Complexity.Normal);
+
+        // Ikkalasi bitta DI qamrovidagi bitta DbContext ustida ishlaydi — navbat ham bitta (M-01).
+        ShareOperationQueueWith(board);
     }
+
+    /// <summary>aSc uslubidagi jadval tahrirlash yadrosi (to'r, drag-drop, undo/redo).</summary>
+    public TimetableBoardViewModel Board { get; }
 
     /// <summary>Tekshiruvda topilgan konfliktlar.</summary>
     public ObservableCollection<ConflictRowViewModel> ValidationConflicts { get; } = new();
 
-    /// <summary>Sinf filtri bandlari ("Barcha sinflar" + har bir sinf).</summary>
-    public ObservableCollection<ClassFilterOption> ClassFilters { get; } = new();
+    /// <summary>Qidiruv byudjeti variantlari.</summary>
+    public ObservableCollection<ComplexityOption> Complexities { get; } = new();
+
+    /// <summary>Joylashtirilmagan darslar ro'yxati (aniq ro'yxat, taxmin emas).</summary>
+    public ObservableCollection<UnplacedLessonRowViewModel> UnplacedLessons { get; } = new();
+
+    /// <summary>Buzilgan hard cheklovlar.</summary>
+    public ObservableCollection<string> HardViolations { get; } = new();
+
+    /// <summary>Generatsiyadan oldingi tekshiruv xatolari ("Xona yetishmaydi").</summary>
+    public ObservableCollection<string> VerificationFaults { get; } = new();
+
+    /// <summary>
+    /// Sig'im ogohlantirishlari: rejadagi soat mavjud slotlardan oshib ketgan
+    /// sinf / guruh / o'qituvchilar.
+    /// </summary>
+    public ObservableCollection<CapacityWarningRowViewModel> CapacityWarnings { get; } = new();
+
+    /// <summary>Qaysi cheklovni yumshatish kerakligi haqidagi tavsiyalar.</summary>
+    public ObservableCollection<string> RelaxationSuggestions { get; } = new();
+
+    /// <summary>Soft jarimaning cheklovlar bo'yicha taqsimoti.</summary>
+    public ObservableCollection<PenaltyRowViewModel> PenaltyBreakdown { get; } = new();
 
     /// <summary>Generator nomi.</summary>
-    public string GeneratorName => "Algoritm: " + _generator.Name;
+    public string GeneratorName => "Algoritm: " + _generation.Name;
 
     /// <summary>Generator tavsifi.</summary>
-    public string GeneratorDescription => _generator.Description;
+    public string GeneratorDescription => _generation.Description;
 
     /// <inheritdoc />
-    public override Task LoadAsync(CancellationToken ct = default) => RefreshAsync(ct);
+    public override Task LoadAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(RefreshCoreAsync, ct);
 
-    [RelayCommand]
-    private async Task RefreshAsync(CancellationToken ct = default)
+    /// <summary>Bosh sahifa ma'lumotlarini bazadan qayta o'qiydi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task RefreshAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(RefreshCoreAsync, ct);
+
+    private async Task RefreshCoreAsync(CancellationToken ct)
     {
         try
         {
             IsBusy = true;
             StatusMessage = "Ma'lumotlar yuklanmoqda...";
 
-            // Ma'lumot bir marta o'qiladi — quyidagi sikllar faqat xotirada ishlaydi.
             var teachers = await _teachers.GetAllAsync(ct).ConfigureAwait(true);
             var subjects = await _subjects.GetAllAsync(ct).ConfigureAwait(true);
             var classGroups = await _classGroups.GetAllAsync(ct).ConfigureAwait(true);
             var assignments = await _assignments.GetAllAsync(ct).ConfigureAwait(true);
-            var entries = await _schedule.GetAllAsync(ct).ConfigureAwait(true);
-            var activeDays = await _workDays.GetActiveAsync(ct).ConfigureAwait(true);
-            var maxLesson = await _workDays.GetMaxLessonNumberAsync(ct).ConfigureAwait(true);
-            var slots = await _workDays.GetLessonSlotsAsync(ct).ConfigureAwait(true);
+            var cards = await _cards.GetCardsAsync(null, ct).ConfigureAwait(true);
 
             TeacherCount = teachers.Count;
             SubjectCount = subjects.Count;
@@ -161,227 +255,62 @@ public sealed partial class DashboardViewModel : ViewModelBase
             AssignmentCount = assignments.Count;
             WeeklyHoursTotal = assignments.Sum(a => a.WeeklyHoursCount);
             WeeklyHoursText = "/ " + WeeklyHoursTotal;
-            PlacedLessonCount = entries.Count;
 
-            BuildClassTimetables(classGroups, entries, activeDays, maxLesson, slots);
+            // Qo'yilgan soatlar = kartochkalar uzunliklari yig'indisi (juft dars 2 soat).
+            PlacedLessonCount = cards.Sum(c => Math.Max(1, c.Length));
 
             StatusMessage = "Tayyor.";
         }
         catch (OperationCanceledException)
         {
             StatusMessage = "Bekor qilindi.";
+            return;
         }
         catch (Exception ex)
         {
             StatusMessage = "Yuklashda xatolik.";
             await _dialogs.ErrorAsync("Ma'lumotlarni yuklashda xatolik yuz berdi.\n\n" + ex.Message)
                 .ConfigureAwait(true);
+            return;
         }
         finally
         {
             IsBusy = false;
         }
-    }
 
-    /// <summary>Umumiy maktab jadvalini bir martalik ma'lumot asosida quradi.</summary>
-    private void BuildClassTimetables(
-        IReadOnlyList<ClassGroup> classGroups,
-        IReadOnlyList<ScheduleEntry> entries,
-        IReadOnlyList<WorkDay> activeDays,
-        int maxLessonNumber,
-        IReadOnlyList<LessonSlot> slots)
-    {
-        var days = activeDays
-            .OrderBy(w => w.DayOfWeek)
-            .Select(w => w.DayOfWeek)
-            .ToList();
-
-        if (days.Count == 0)
-        {
-            days = WeekDayExtensions.All.Take(6).ToList();
-        }
-
-        var lastLesson = maxLessonNumber > 0 ? maxLessonNumber : 7;
-
-        var slotTexts = new Dictionary<int, string>();
-        foreach (var slot in slots)
-        {
-            slotTexts[slot.LessonNumber] = ToTimeText(slot.StartTime) + "-" + ToTimeText(slot.EndTime);
-        }
-
-        // Yozuvlarni sinf bo'yicha bir marta guruhlaymiz — sinflar bo'ylab DB ga qayta bormaymiz.
-        var byClass = new Dictionary<int, Dictionary<(WeekDay Day, int Lesson), ScheduleEntry>>();
-        foreach (var entry in entries)
-        {
-            if (!byClass.TryGetValue(entry.ClassGroupId, out var map))
-            {
-                map = new Dictionary<(WeekDay, int), ScheduleEntry>();
-                byClass[entry.ClassGroupId] = map;
-            }
-
-            map[(entry.DayOfWeek, entry.LessonNumber)] = entry;
-        }
-
-        _dayHeaders.Clear();
-        foreach (var day in days)
-        {
-            _dayHeaders.Add(day.ToUzbek());
-        }
-
-        _allTimetables.Clear();
-
-        foreach (var classGroup in classGroups.OrderBy(c => c.Name, StringComparer.CurrentCulture))
-        {
-            byClass.TryGetValue(classGroup.Id, out var lookup);
-
-            var block = new ClassTimetableViewModel
-            {
-                ClassGroupId = classGroup.Id,
-                ClassName = classGroup.Name,
-                RoomText = string.IsNullOrWhiteSpace(classGroup.RoomNumber)
-                    ? string.Empty
-                    : classGroup.RoomNumber!.Trim() + "-xona",
-                LessonCount = lookup?.Count ?? 0,
-            };
-
-            for (var lesson = 1; lesson <= lastLesson; lesson++)
-            {
-                slotTexts.TryGetValue(lesson, out var time);
-
-                var row = new ClassTimetableRowViewModel
-                {
-                    LessonText = lesson + "-soat",
-                    TimeText = time ?? string.Empty,
-                };
-
-                foreach (var day in days)
-                {
-                    ScheduleEntry? entry = null;
-                    lookup?.TryGetValue((day, lesson), out entry);
-
-                    if (entry is null)
-                    {
-                        row.Cells.Add(new DashboardCellViewModel());
-                        continue;
-                    }
-
-                    row.Cells.Add(new DashboardCellViewModel
-                    {
-                        HasEntry = true,
-                        SubjectName = entry.Subject?.Name ?? "(fan)",
-                        TeacherName = ShortName(entry.Teacher?.FullName),
-                        RoomText = string.IsNullOrWhiteSpace(entry.RoomNumber)
-                            ? string.Empty
-                            : entry.RoomNumber!,
-                        ColorCode = entry.Teacher?.ColorCode ?? "#90A4AE",
-                    });
-                }
-
-                block.Rows.Add(row);
-            }
-
-            _allTimetables.Add(block);
-        }
-
-        RebuildClassFilters();
-
-        if (classGroups.Count == 0)
-        {
-            TimetableEmptyMessage = NoClassGroupsMessage;
-            IsTimetableEmpty = true;
-        }
-        else if (entries.Count == 0)
-        {
-            TimetableEmptyMessage = NoLessonsMessage;
-            IsTimetableEmpty = true;
-        }
-        else
-        {
-            IsTimetableEmpty = false;
-        }
-
-        ApplyClassFilter();
-    }
-
-    /// <summary>Filtr ro'yxatini qayta quradi va oldingi tanlovni saqlab qoladi.</summary>
-    private void RebuildClassFilters()
-    {
-        var previousId = SelectedClassFilter?.Id ?? 0;
-
-        _isRefreshingFilters = true;
-
-        try
-        {
-            ClassFilters.Clear();
-            ClassFilters.Add(new ClassFilterOption(0, "Barcha sinflar"));
-
-            foreach (var block in _allTimetables)
-            {
-                ClassFilters.Add(new ClassFilterOption(block.ClassGroupId, block.ClassName));
-            }
-
-            SelectedClassFilter = ClassFilters.FirstOrDefault(f => f.Id == previousId) ?? ClassFilters[0];
-        }
-        finally
-        {
-            _isRefreshingFilters = false;
-        }
-    }
-
-    /// <summary>Tanlangan filtrga mos sinf guruhlaridan yangi "surat" tayyorlaydi.</summary>
-    private void ApplyClassFilter()
-    {
-        var filterId = SelectedClassFilter?.Id ?? 0;
-        var blocks = new List<ClassTimetableViewModel>();
-
-        foreach (var block in _allTimetables)
-        {
-            if (filterId != 0 && block.ClassGroupId != filterId)
-            {
-                continue;
-            }
-
-            block.IsAlternate = blocks.Count % 2 == 1;
-            blocks.Add(block);
-        }
-
-        Timetable = new SchoolTimetableSnapshot
-        {
-            DayHeaders = _dayHeaders.ToArray(),
-            Blocks = blocks,
-        };
-    }
-
-    partial void OnSelectedClassFilterChanged(ClassFilterOption? value)
-    {
-        if (_isRefreshingFilters)
-        {
-            return;
-        }
-
-        ApplyClassFilter();
+        // Jadval yadrosi o'z navbatida ma'lumotni bir marta o'qib, baholash keshini quradi.
+        await Board.LoadAsync(ct).ConfigureAwait(true);
     }
 
     partial void OnGenerationMessageChanged(string value)
         => HasGenerationMessage = !string.IsNullOrWhiteSpace(value);
 
-    /// <summary>"Dars jadvali" sahifasiga o'tib, shu sinfni tanlab beradi.</summary>
-    [RelayCommand]
-    private void EditClass(ClassTimetableViewModel? item)
-    {
-        if (item is null)
-        {
-            return;
-        }
-
-        _main.GoToTimetable(item.ClassGroupId);
-    }
-
+    /// <summary>Jadvalni avtomatik tuzadi (yangi <c>Card</c> asosidagi yadro).</summary>
     [RelayCommand(CanExecute = nameof(CanGenerate))]
-    private async Task GenerateAsync()
+    private Task GenerateAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(GenerateCoreAsync, ct);
+
+    private async Task GenerateCoreAsync(CancellationToken ct)
     {
+        // aSc "Verify specification" fazasi kabi: reja sig'imdan oshgan bo'lsa
+        // foydalanuvchi buni GENERATSIYADAN OLDIN biladi. Aks holda darslarning bir
+        // qismi jimgina joylashmay qolardi va sabab ko'rinmasdi.
+        var capacity = await CheckCapacityCoreAsync(ct, showDialogWhenClean: false).ConfigureAwait(true);
+
+        var warningText = capacity.HasWarnings
+            ? "\n\nDIQQAT — reja sig'imdan oshgan:\n" +
+              string.Join("\n", capacity.Warnings.Take(8).Select(w => "• " + w.Message)) +
+              (capacity.Warnings.Count > 8
+                  ? $"\n… va yana {capacity.Warnings.Count - 8} ta.\n"
+                  : "\n") +
+              "Bu soatlar jadvalga sig'maydi — generator ularni joylashtira olmaydi."
+            : string.Empty;
+
         var confirmed = await _dialogs.ConfirmAsync(
-                "Jadval avtomatik tuziladi. Mavjud jadval o'chirilib, qaytadan tuziladi.\n\nDavom etilsinmi?",
+                "Jadval avtomatik tuziladi. Mavjud kartochkalar qaytadan joylashtiriladi" +
+                (KeepLocked ? " (qulflanganlari joyida qoladi)" : string.Empty) +
+                "." + warningText +
+                "\n\nDavom etilsinmi?",
                 "Jadvalni avtomatik tuzish")
             .ConfigureAwait(true);
 
@@ -390,7 +319,8 @@ public sealed partial class DashboardViewModel : ViewModelBase
             return;
         }
 
-        _generationCts = new CancellationTokenSource();
+        // Navbatning tokeni bilan bog'lanadi: sahifadan chiqilsa generatsiya ham to'xtaydi.
+        _generationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
         try
         {
@@ -398,58 +328,57 @@ public sealed partial class DashboardViewModel : ViewModelBase
             GenerateCommand.NotifyCanExecuteChanged();
             CancelGenerationCommand.NotifyCanExecuteChanged();
 
+            ClearReport();
+
             GenerationProgressValue = 0;
             GenerationProgressMax = 100;
+            GenerationPhase = "Boshlanmoqda";
+            GenerationPercentText = "0%";
             GenerationMessage = "Boshlanmoqda...";
             StatusMessage = "Jadval tuzilmoqda...";
 
-            var progress = new Progress<GenerationProgress>(p =>
+            var progress = new Progress<ScheduleGenerationProgress>(p =>
             {
-                GenerationProgressMax = p.Total > 0 ? p.Total : 100;
-                GenerationProgressValue = p.Current;
-                GenerationMessage = string.IsNullOrWhiteSpace(p.Message)
-                    ? $"{p.Current} / {p.Total}"
-                    : $"{p.Current} / {p.Total} — {p.Message}";
+                GenerationProgressMax = 100;
+                GenerationProgressValue = Math.Clamp(p.Percent, 0, 100);
+                GenerationPhase = p.PhaseName;
+                GenerationPercentText = p.Percent.ToString("F0", CultureInfo.CurrentCulture) + "%";
+                GenerationMessage =
+                    $"{p.PhaseName}: {p.PlacedCards}/{p.TotalCards} kartochka, jarima {p.SoftCost}";
             });
 
-            var options = new GenerationOptions { ClearExisting = true };
-            var result = await _generator
+            var options = new ScheduleGenerationOptions
+            {
+                Seed = Seed,
+                Complexity = SelectedComplexity?.Value ?? Complexity.Normal,
+                KeepLocked = KeepLocked,
+                SavePartial = SavePartial,
+                AllowRelaxation = true,
+            };
+
+            // GenerateAsync HECH QACHON OperationCanceledException tashlamaydi —
+            // bekor qilinsa Cancelled = true bo'lgan hisobot qaytadi.
+            var report = await _generation
                 .GenerateAsync(options, progress, _generationCts.Token)
                 .ConfigureAwait(true);
 
-            // Generatsiyadan keyin jadval qayta yuklanadi.
-            await RefreshAsync(CancellationToken.None).ConfigureAwait(true);
+            ShowReport(report);
 
-            var text =
-                (result.Success ? "Jadval muvaffaqiyatli tuzildi." : "Jadval to'liq tuzilmadi.") +
-                Environment.NewLine + Environment.NewLine +
-                $"Qo'yilgan darslar: {result.PlacedCount}" + Environment.NewLine +
-                $"Qo'yilmagan darslar: {result.UnplacedCount}" + Environment.NewLine +
-                $"Sarflangan vaqt: {result.Elapsed.TotalSeconds:0.0} soniya";
-
-            if (result.Messages.Count > 0)
+            if (report.Cancelled)
             {
-                var shown = result.Messages.Take(15);
-                text += Environment.NewLine + Environment.NewLine +
-                        "Izohlar:" + Environment.NewLine +
-                        string.Join(Environment.NewLine, shown.Select(m => "• " + m));
-
-                if (result.Messages.Count > 15)
-                {
-                    text += Environment.NewLine + $"... va yana {result.Messages.Count - 15} ta izoh.";
-                }
+                GenerationMessage = "Jadval tuzish bekor qilindi — jadval o'zgarmadi.";
+                StatusMessage = "Bekor qilindi.";
+                return;
             }
 
-            GenerationMessage = result.Success
-                ? $"Tayyor: {result.PlacedCount} ta dars qo'yildi."
-                : $"{result.PlacedCount} ta qo'yildi, {result.UnplacedCount} ta qo'yilmadi.";
+            // Generatsiyadan keyin jadval qayta yuklanadi (navbat ichida — shu tokendan foydalanadi).
+            await RefreshCoreAsync(ct).ConfigureAwait(true);
 
-            await _dialogs.InfoAsync(text, "Jadval tuzish natijasi").ConfigureAwait(true);
-        }
-        catch (OperationCanceledException)
-        {
-            GenerationMessage = "Jadval tuzish bekor qilindi.";
-            StatusMessage = "Bekor qilindi.";
+            GenerationMessage = report.Success
+                ? $"Tayyor: {report.PlacedCards} ta kartochka joylashtirildi."
+                : $"{report.PlacedCards} ta joylashtirildi, {report.UnplacedCards} tasi joylashmadi.";
+
+            StatusMessage = GenerationMessage;
         }
         catch (Exception ex)
         {
@@ -467,8 +396,80 @@ public sealed partial class DashboardViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Hisobotni ekranga chiqaradi.</summary>
+    private void ShowReport(ScheduleGenerationReport report)
+    {
+        ClearReport();
+
+        GenerationSummary = report.Cancelled
+            ? "Bekor qilindi — hech narsa yozilmadi."
+            : $"Joylashgan: {report.PlacedCards} / {report.TotalCards} kartochka" +
+              (report.Applied ? string.Empty : "  (natija SAQLANMADI)") +
+              $"  •  {report.Elapsed.TotalSeconds.ToString("F1", CultureInfo.CurrentCulture)} soniya";
+
+        SoftCostText = $"Yumshoq jarima: {report.SoftCost}";
+
+        foreach (var lesson in report.UnplacedLessons)
+        {
+            UnplacedLessons.Add(new UnplacedLessonRowViewModel(lesson));
+        }
+
+        foreach (var violation in report.HardViolations)
+        {
+            HardViolations.Add(violation);
+        }
+
+        foreach (var fault in report.VerificationFaults)
+        {
+            VerificationFaults.Add(fault);
+        }
+
+        foreach (var suggestion in report.RelaxationSuggestions)
+        {
+            RelaxationSuggestions.Add(suggestion);
+        }
+
+        foreach (var share in report.PenaltyBreakdown.OrderByDescending(p => p.Penalty))
+        {
+            PenaltyBreakdown.Add(new PenaltyRowViewModel(share));
+        }
+
+        ValidationConflicts.Clear();
+        foreach (var conflict in report.Conflicts)
+        {
+            ValidationConflicts.Add(new ConflictRowViewModel(conflict));
+        }
+
+        HasUnplacedLessons = UnplacedLessons.Count > 0;
+        HasHardViolations = HardViolations.Count > 0;
+        HasVerificationFaults = VerificationFaults.Count > 0;
+        HasRelaxationSuggestions = RelaxationSuggestions.Count > 0;
+        HasPenaltyBreakdown = PenaltyBreakdown.Count > 0;
+
+        HasValidationResult = ValidationConflicts.Count > 0;
+        HasGenerationReport = true;
+    }
+
+    private void ClearReport()
+    {
+        UnplacedLessons.Clear();
+        HardViolations.Clear();
+        VerificationFaults.Clear();
+        RelaxationSuggestions.Clear();
+        PenaltyBreakdown.Clear();
+        GenerationSummary = string.Empty;
+        SoftCostText = string.Empty;
+        HasUnplacedLessons = false;
+        HasHardViolations = false;
+        HasVerificationFaults = false;
+        HasRelaxationSuggestions = false;
+        HasPenaltyBreakdown = false;
+        HasGenerationReport = false;
+    }
+
     private bool CanGenerate() => !IsGenerating;
 
+    /// <summary>Generatsiyani bekor qiladi — jadval o'zgarishsiz qoladi.</summary>
     [RelayCommand(CanExecute = nameof(CanCancelGeneration))]
     private void CancelGeneration()
     {
@@ -478,34 +479,43 @@ public sealed partial class DashboardViewModel : ViewModelBase
 
     private bool CanCancelGeneration() => IsGenerating;
 
-    [RelayCommand]
-    private async Task ValidateAllAsync(CancellationToken ct = default)
+    /// <summary>Butun jadvalni tekshiradi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ValidateAllAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ValidateAllCoreAsync, ct);
+
+    private async Task ValidateAllCoreAsync(CancellationToken ct)
     {
+        // "Tekshirish" amali ikki qismdan iborat: sig'im (reja) va joylashtirish (fakt).
+        await CheckCapacityCoreAsync(ct, showDialogWhenClean: false).ConfigureAwait(true);
+
         try
         {
             IsBusy = true;
             StatusMessage = "Jadval tekshirilmoqda...";
 
-            var result = await _validator.ValidateAllAsync(ct).ConfigureAwait(true);
+            var conflicts = await _generation.ValidateAsync(null, ct).ConfigureAwait(true);
 
             ValidationConflicts.Clear();
-            foreach (var conflict in result.Conflicts)
+            foreach (var conflict in conflicts)
             {
                 ValidationConflicts.Add(new ConflictRowViewModel(conflict));
             }
 
             HasValidationResult = true;
 
-            if (result.Conflicts.Count == 0)
+            if (conflicts.Count == 0)
             {
-                ValidationSummary = "Jadvalda muammo topilmadi.";
+                ValidationSummary = HasCapacityWarnings
+                    ? "Jadvalda to'qnashuv yo'q, lekin reja sig'imdan oshgan (pastga qarang)."
+                    : "Jadvalda muammo topilmadi.";
             }
             else
             {
-                var errors = result.Conflicts.Count(c => c.Severity == ConflictSeverity.Error);
-                var warnings = result.Conflicts.Count - errors;
+                var errors = conflicts.Count(c => c.Severity == ConflictSeverity.Error);
+                var warnings = conflicts.Count - errors;
                 ValidationSummary =
-                    $"Jami {result.Conflicts.Count} ta muammo: {errors} ta xato, {warnings} ta ogohlantirish.";
+                    $"Jami {conflicts.Count} ta muammo: {errors} ta xato, {warnings} ta ogohlantirish.";
             }
 
             StatusMessage = "Tekshiruv yakunlandi.";
@@ -524,9 +534,82 @@ public sealed partial class DashboardViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Rejani sig'im bo'yicha tekshiradi: har sinf/guruh/o'qituvchi uchun
+    /// "rejalashtirilgan soat" va "mavjud slot" solishtiriladi.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task CheckCapacityAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(token => CheckCapacityCoreAsync(token, showDialogWhenClean: true), ct);
+
+    /// <summary>
+    /// Sig'im tekshiruvini bajaradi va natijani ekranga chiqaradi.
+    /// </summary>
+    /// <param name="ct">Bekor qilish tokeni.</param>
+    /// <param name="showDialogWhenClean">
+    /// Muammo topilmasa ham xabar oynasi ko'rsatilsinmi (alohida "Tekshirish" tugmasi uchun).
+    /// </param>
+    private async Task<PlanCapacityReport> CheckCapacityCoreAsync(
+        CancellationToken ct, bool showDialogWhenClean)
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "Reja sig'imi tekshirilmoqda...";
+
+            var report = await _capacity.CheckAsync(null, ct).ConfigureAwait(true);
+
+            CapacityWarnings.Clear();
+            foreach (var warning in report.Warnings)
+            {
+                CapacityWarnings.Add(new CapacityWarningRowViewModel(warning));
+            }
+
+            // Yadroning Verify fazasi xatolari — generatsiya hisobotidagi bilan AYNI manba.
+            VerificationFaults.Clear();
+            foreach (var fault in report.VerificationFaults)
+            {
+                VerificationFaults.Add(fault);
+            }
+
+            HasVerificationFaults = VerificationFaults.Count > 0;
+            HasCapacityWarnings = CapacityWarnings.Count > 0;
+            HasCapacityResult = true;
+            CapacitySummary = report.Summary;
+            StatusMessage = report.Summary;
+
+            if (showDialogWhenClean && !report.HasWarnings)
+            {
+                await _dialogs.InfoAsync(report.Summary, "Sig'im tekshiruvi").ConfigureAwait(true);
+            }
+
+            return report;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Bekor qilindi.";
+            return PlanCapacityReport.Empty;
+        }
+        catch (Exception ex)
+        {
+            CapacitySummary = "Sig'imni tekshirib bo'lmadi.";
+            HasCapacityResult = true;
+            await _dialogs.ErrorAsync("Reja sig'imini tekshirishda xatolik yuz berdi.\n\n" + ex.Message)
+                .ConfigureAwait(true);
+            return PlanCapacityReport.Empty;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     /// <summary>Butun jadvalni tozalaydi (tasdiqdan keyin).</summary>
-    [RelayCommand]
-    private async Task ClearScheduleAsync(CancellationToken ct = default)
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ClearScheduleAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ClearScheduleCoreAsync, ct);
+
+    private async Task ClearScheduleCoreAsync(CancellationToken ct)
     {
         var confirmed = await _dialogs.ConfirmAsync(
                 "Barcha sinflarning jadvali to'liq o'chirilsinmi?\n\nBu amalni qaytarib bo'lmaydi.",
@@ -541,11 +624,19 @@ public sealed partial class DashboardViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await _schedule.ClearAsync(null, ct).ConfigureAwait(true);
+
+            var scheduleId = await _schedules.GetActiveIdAsync(ct).ConfigureAwait(true);
+            await _rewriter.RewriteAsync(scheduleId, Array.Empty<CardWrite>(), ct).ConfigureAwait(true);
+
             ValidationConflicts.Clear();
             ValidationSummary = string.Empty;
             HasValidationResult = false;
+            ClearReport();
             StatusMessage = "Jadval tozalandi.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -558,30 +649,33 @@ public sealed partial class DashboardViewModel : ViewModelBase
         }
 
         // Tozalashdan keyin jadval qayta yuklanadi.
-        await RefreshAsync(ct).ConfigureAwait(true);
+        await RefreshCoreAsync(ct).ConfigureAwait(true);
     }
 
-    /// <summary>Joriy sinf filtriga mos jadvalni PDF ga yuklab oladi.</summary>
-    [RelayCommand]
-    private async Task ExportPdfAsync(CancellationToken ct = default)
+    /// <summary>Joriy ko'rinishga mos jadvalni PDF ga yuklab oladi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ExportPdfAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ExportPdfCoreAsync, ct);
+
+    private async Task ExportPdfCoreAsync(CancellationToken ct)
     {
         try
         {
             IsBusy = true;
             StatusMessage = "PDF tayyorlanmoqda...";
 
-            var filterId = SelectedClassFilter?.Id ?? 0;
+            // E-01: qamrov metod nomida aniq ko'rsatiladi — "barcha sinflar" tasodifan chiqmaydi.
+            var filterId = Board.ViewKind == Models.TimetableViewKind.Class
+                ? Board.SelectedScope?.Id ?? 0
+                : 0;
 
-            var options = new PdfExportOptions
-            {
-                ClassGroupId = filterId == 0 ? null : filterId,
-                SchoolName = null,
-            };
+            var options = new PdfExportOptions { SchoolName = null };
 
-            var pdf = await _pdfExporter.ExportAsync(options, ct).ConfigureAwait(true);
-            var suggested = _pdfExporter.SuggestFileName(options, DateTime.Now);
+            var document = filterId == 0
+                ? await _pdfExporter.ExportSchoolScheduleAsync(options, ct).ConfigureAwait(true)
+                : await _pdfExporter.ExportClassScheduleAsync(filterId, options, ct).ConfigureAwait(true);
 
-            var path = await _dialogs.SaveFileAsync(suggested).ConfigureAwait(true);
+            var path = await _dialogs.SaveFileAsync(document.FileName).ConfigureAwait(true);
 
             if (path is null)
             {
@@ -589,7 +683,7 @@ public sealed partial class DashboardViewModel : ViewModelBase
                 return;
             }
 
-            await File.WriteAllBytesAsync(path, pdf, ct).ConfigureAwait(true);
+            await File.WriteAllBytesAsync(path, document.Content, ct).ConfigureAwait(true);
 
             StatusMessage = "PDF saqlandi.";
             await _dialogs.InfoAsync($"PDF saqlandi:\n{path}", "PDF yuklab olindi").ConfigureAwait(true);
@@ -607,31 +701,113 @@ public sealed partial class DashboardViewModel : ViewModelBase
             IsBusy = false;
         }
     }
+}
 
-    /// <summary>TimeSpan ni "HH:mm" ko'rinishiga keltiradi.</summary>
-    private static string ToTimeText(TimeSpan value)
-        => value.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
-
-    /// <summary>"Voxidjonov Abduxalil" → "Voxidjonov A." ko'rinishidagi qisqartma.</summary>
-    private static string ShortName(string? fullName)
+/// <summary>Qidiruv byudjeti (aSc "Complexity of generation") tanlagichidagi band.</summary>
+/// <param name="Value">Yadro qiymati.</param>
+/// <param name="Name">O'zbekcha nom.</param>
+public sealed record ComplexityOption(Complexity Value, string Name)
+{
+    /// <summary>Barcha variantlar.</summary>
+    public static IReadOnlyList<ComplexityOption> All { get; } = new[]
     {
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return "(o'qituvchi)";
-        }
+        new ComplexityOption(Complexity.Small, "Kichik (tez)"),
+        new ComplexityOption(Complexity.Normal, "Oddiy"),
+        new ComplexityOption(Complexity.Large, "Katta (sekinroq)"),
+        new ComplexityOption(Complexity.Huge, "Juda katta (eng sekin)"),
+    };
+}
 
-        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+/// <summary>Hisobotdagi bitta joylashtirilmagan dars qatori.</summary>
+public sealed class UnplacedLessonRowViewModel
+{
+    /// <summary>Qatorni yaratadi.</summary>
+    public UnplacedLessonRowViewModel(UnplacedLessonView source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
 
-        if (parts.Length < 2)
-        {
-            return parts.Length == 1 ? parts[0] : fullName.Trim();
-        }
-
-        var initials = parts
-            .Skip(1)
-            .Take(2)
-            .Select(p => char.ToUpper(p[0], CultureInfo.CurrentCulture) + ".");
-
-        return parts[0] + " " + string.Join(" ", initials);
+        SubjectName = source.SubjectName;
+        Scope = string.IsNullOrWhiteSpace(source.GroupName)
+            ? source.ClassName
+            : source.ClassName + " / " + source.GroupName;
+        Teachers = source.TeacherNames.Count == 0
+            ? "(o'qituvchi biriktirilmagan)"
+            : string.Join(", ", source.TeacherNames);
+        HoursText = $"{source.RemainingPeriods} soat qoldi ({source.PlacedPeriods}/{source.PeriodsPerWeek})";
     }
+
+    /// <summary>Fan nomi.</summary>
+    public string SubjectName { get; }
+
+    /// <summary>Sinf va guruh.</summary>
+    public string Scope { get; }
+
+    /// <summary>O'qituvchilar.</summary>
+    public string Teachers { get; }
+
+    /// <summary>Qolgan soat matni.</summary>
+    public string HoursText { get; }
+}
+
+/// <summary>Sig'im ogohlantirishlaridagi bitta qator.</summary>
+/// <remarks>
+/// Rang/qalinlik qaytarilmaydi — <see cref="Scope"/> semantik enum sifatida beriladi,
+/// ko'rinish esa XAML tomonda hal qilinadi (M-05 qoidasi).
+/// </remarks>
+public sealed class CapacityWarningRowViewModel
+{
+    /// <summary>Qatorni yaratadi.</summary>
+    public CapacityWarningRowViewModel(CapacityWarning source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        Scope = source.Scope;
+        Name = source.Name;
+        Message = source.Message;
+        OverflowText = $"{source.Overflow} soat sig'maydi";
+        ScopeText = source.Scope switch
+        {
+            CapacityScope.Class => "Sinf",
+            CapacityScope.Group => "Guruh",
+            _ => "O'qituvchi",
+        };
+    }
+
+    /// <summary>Ogohlantirish kimga tegishli (semantik enum).</summary>
+    public CapacityScope Scope { get; }
+
+    /// <summary>Sinf / guruh / o'qituvchi nomi.</summary>
+    public string Name { get; }
+
+    /// <summary>To'liq o'zbekcha xabar.</summary>
+    public string Message { get; }
+
+    /// <summary>"Sinf" / "Guruh" / "O'qituvchi".</summary>
+    public string ScopeText { get; }
+
+    /// <summary>Sig'maydigan soat matni.</summary>
+    public string OverflowText { get; }
+}
+
+/// <summary>Jarima taqsimotidagi bitta qator.</summary>
+public sealed class PenaltyRowViewModel
+{
+    /// <summary>Qatorni yaratadi.</summary>
+    public PenaltyRowViewModel(PenaltyShare source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        ConstraintId = source.ConstraintId;
+        Name = source.Name;
+        PenaltyText = source.Penalty.ToString(CultureInfo.CurrentCulture);
+    }
+
+    /// <summary>Cheklov kodi.</summary>
+    public string ConstraintId { get; }
+
+    /// <summary>Cheklov nomi.</summary>
+    public string Name { get; }
+
+    /// <summary>Jarima qiymati.</summary>
+    public string PenaltyText { get; }
 }

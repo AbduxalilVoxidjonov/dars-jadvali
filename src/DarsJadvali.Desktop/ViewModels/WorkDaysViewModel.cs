@@ -86,7 +86,7 @@ public sealed partial class WorkDaysViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task AddSlotAsync()
     {
         var nextNumber = 1;
@@ -129,7 +129,7 @@ public sealed partial class WorkDaysViewModel : ViewModelBase
         StatusMessage = $"{nextNumber}-dars qo'shildi. Saqlashni unutmang.";
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task RemoveSlotAsync(LessonSlotRowViewModel? row)
     {
         if (row is null)
@@ -150,7 +150,7 @@ public sealed partial class WorkDaysViewModel : ViewModelBase
         StatusMessage = "Dars soati olib tashlandi. Saqlashni unutmang.";
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveAsync(CancellationToken ct = default)
     {
         // 1) Kunlar tekshiruvi

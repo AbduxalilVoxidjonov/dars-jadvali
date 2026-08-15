@@ -1,0 +1,451 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:m="clr-namespace:DarsJadvali.Desktop.Models"
+             x:Class="DarsJadvali.Desktop.Views.TimetableBoardView"
+             x:DataType="vm:TimetableBoardViewModel"
+             Focusable="True">
+
+  <!--
+    aSc uslubidagi jadval tahrirlash to'ri.
+
+    M-04 ga javob:
+      • Butun to'r DEKLARATIV — code-behind faqat sichqoncha/klaviatura hodisalarini uzatadi,
+        birorta Border/TextBlock kod tomondan yaratilmaydi.
+      • Qatorlar VirtualizingStackPanel ichida — ekranda ko'rinmagan qator umuman qurilmaydi.
+      • Qat'iy piksel kengliklar yo'q: barcha o'lcham bitta TimetableMetrics obyektidan keladi
+        (WPF'dagi SharedSizeGroup ekvivalenti), zoom o'sha obyektni o'zgartiradi.
+  -->
+
+  <UserControl.Styles>
+    <Style Selector="Border.tor-katak">
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Border.tor-sarlavha">
+      <Setter Property="Background" Value="{DynamicResource AppHeaderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+    </Style>
+
+    <!-- Kartaning foni: juft dars kataklari bir-biriga ulanib, yaxlit blok bo'lib ko'rinadi -->
+    <Style Selector="Border.karta-fon">
+      <Setter Property="Margin" Value="2,0,2,0" />
+      <Setter Property="BorderBrush" Value="#00000000" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- Kartaning boshi (davomi emas) — yuqoridan ajratuvchi chiziq -->
+    <Style Selector="Border.karta-fon:not(.davomi)">
+      <Setter Property="Margin" Value="2,2,2,0" />
+      <Setter Property="CornerRadius" Value="3,3,0,0" />
+    </Style>
+
+    <Style Selector="Border.qator-alternativ">
+      <Setter Property="Background" Value="#F6F4FB" />
+    </Style>
+
+    <!-- Kartadagi qo'shimcha matn -->
+    <Style Selector="TextBlock.izoh">
+      <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
+    </Style>
+
+    <!-- «*» — matn ranglari invert qilinadi (aSc §4.4) -->
+    <Style Selector="StackPanel.teskari TextBlock">
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+
+    <!-- ================= Bitta katak ================= -->
+    <DataTemplate x:Key="SlotTemplate" x:DataType="vm:TimetableSlotViewModel">
+      <Border Classes="tor-katak" Width="{Binding Metrics.CellWidth}">
+        <Panel>
+
+          <!-- 1-qatlam: kartaning rangli foni (o'qituvchi rangining ochiq toni) -->
+          <Border Classes="karta-fon"
+                  Classes.davomi="{Binding IsContinuation}"
+                  IsVisible="{Binding HasCard}"
+                  Background="{Binding Card.ColorCode, Converter={StaticResource ColorCodeToBrush}, ConverterParameter=Light}"
+                  Opacity="{Binding Metrics.NormalLayerOpacity}" />
+
+          <!-- 1b-qatlam: «*» bilan invert qilingan ko'rinish — to'q fon, oq matn (aSc §4.4) -->
+          <Border Classes="karta-fon"
+                  Classes.davomi="{Binding IsContinuation}"
+                  IsVisible="{Binding HasCard}"
+                  Background="{Binding Card.ColorCode, Converter={StaticResource ColorCodeToBrush}}"
+                  Opacity="{Binding Metrics.InvertedLayerOpacity}" />
+
+          <!-- 2-qatlam: SHIFT bilan yoritilgan mumkin pozitsiya -->
+          <Border IsVisible="{Binding IsHighlighted}"
+                  Margin="1"
+                  CornerRadius="3"
+                  BorderThickness="2"
+                  BorderBrush="{DynamicResource AppSuccessBrush}" />
+
+          <!-- 3-qatlam: kursor ostidagi jonli baho (kulrang / ko'k / yashil) -->
+          <Border IsVisible="{Binding Rating, Converter={StaticResource NotNullToBoolean}}"
+                  Margin="1"
+                  Opacity="0.8"
+                  CornerRadius="3"
+                  BorderThickness="2"
+                  Background="{Binding Rating, Converter={StaticResource PlacementRatingToBrush}, ConverterParameter=Background}"
+                  BorderBrush="{Binding Rating, Converter={StaticResource PlacementRatingToBrush}}" />
+
+          <!-- 3b-qatlam: karta hozir "qo'lda" — punktir chegara bilan ajratiladi -->
+          <Border IsVisible="{Binding Card.State, Converter={StaticResource EnumToBoolean}, ConverterParameter=InHand}"
+                  Margin="1"
+                  CornerRadius="3"
+                  BorderThickness="2"
+                  BorderBrush="{DynamicResource AppSelectionBrush}" />
+
+          <!-- 4-qatlam: matn (juft darsda faqat birinchi soatda) -->
+          <StackPanel IsVisible="{Binding ShowCardText}"
+                      Classes.teskari="{Binding Metrics.IsInverted}"
+                      Margin="6,3"
+                      VerticalAlignment="Center">
+            <TextBlock Text="{Binding Card.SubjectName}"
+                       FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis"
+                       FontSize="{Binding Metrics.TitleFontSize}" />
+            <TextBlock Classes="izoh"
+                       Text="{Binding Card.TeacherText}"
+                       TextTrimming="CharacterEllipsis"
+                       FontSize="{Binding Metrics.DetailFontSize}" />
+            <TextBlock Classes="izoh"
+                       Text="{Binding Card.ScopeText}"
+                       TextTrimming="CharacterEllipsis"
+                       FontSize="{Binding Metrics.DetailFontSize}" />
+
+            <!-- Juft dars / A-B hafta belgisi (yangi Card modelidagi haqiqiy maydonlar) -->
+            <TextBlock Classes="izoh"
+                       Text="{Binding Card.BadgeText}"
+                       IsVisible="{Binding Card.HasBadge}"
+                       TextTrimming="CharacterEllipsis"
+                       FontWeight="SemiBold"
+                       FontSize="{Binding Metrics.DetailFontSize}" />
+          </StackPanel>
+
+          <!-- 5-qatlam: qulf ko'rsatkichi — o'ng-past burchakdagi kulrang chiziq (aSc §4.5) -->
+          <Border IsVisible="{Binding Card.IsLocked}"
+                  Width="18"
+                  Height="3"
+                  Margin="0,0,5,4"
+                  CornerRadius="2"
+                  Background="{DynamicResource AppMutedTextBrush}"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Bottom" />
+        </Panel>
+      </Border>
+    </DataTemplate>
+
+    <!-- ================= Bitta qator ================= -->
+    <DataTemplate x:Key="RowTemplate" x:DataType="vm:TimetableRowViewModel">
+      <StackPanel Orientation="Horizontal" Height="{Binding Metrics.RowHeight}">
+
+        <!-- Sinf / o'qituvchi nomi: faqat blokning birinchi qatorida (RowSpan o'rniga) -->
+        <Border Classes="tor-katak"
+                Classes.qator-alternativ="{Binding IsAlternate}"
+                Width="{Binding Metrics.HeaderWidth}">
+          <TextBlock Text="{Binding ScopeName}"
+                     IsVisible="{Binding IsFirstOfScope}"
+                     Margin="8,0"
+                     FontWeight="Bold"
+                     TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center"
+                     FontSize="{Binding Metrics.TitleFontSize}" />
+        </Border>
+
+        <!-- Dars raqami va vaqti -->
+        <Border Classes="tor-katak"
+                Classes.qator-alternativ="{Binding IsAlternate}"
+                Width="{Binding Metrics.PeriodWidth}">
+          <StackPanel VerticalAlignment="Center" Margin="6,0">
+            <TextBlock Text="{Binding PeriodText}"
+                       FontWeight="SemiBold"
+                       FontSize="{Binding Metrics.DetailFontSize}" />
+            <TextBlock Text="{Binding TimeText}"
+                       IsVisible="{Binding HasTimeText}"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       FontSize="{Binding Metrics.DetailFontSize}" />
+          </StackPanel>
+        </Border>
+
+        <!-- Kun kataklari -->
+        <ItemsControl ItemsSource="{Binding Slots}" ItemTemplate="{StaticResource SlotTemplate}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- ================= Joylashtirilmagan karta ================= -->
+    <DataTemplate x:Key="UnplacedTemplate" x:DataType="m:TimetableCard">
+      <Border Margin="0,0,0,5"
+              Padding="8,5"
+              CornerRadius="4"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              Background="{Binding ColorCode, Converter={StaticResource ColorCodeToBrush}, ConverterParameter=Light}">
+        <StackPanel>
+          <TextBlock Text="{Binding SubjectName}" FontWeight="SemiBold" FontSize="12" />
+          <TextBlock Text="{Binding ScopeText}"
+                     FontSize="10"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+          <TextBlock Text="{Binding TeacherText}"
+                     FontSize="10"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+          <TextBlock Text="{Binding BadgeText}"
+                     IsVisible="{Binding HasBadge}"
+                     FontSize="10"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- ================= Asboblar paneli ================= -->
+    <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+      <TextBlock Text="Ko'rinish:"
+                 VerticalAlignment="Center"
+                 Margin="0,0,8,0"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+
+      <RadioButton Content="Sinf"
+                   GroupName="korinish"
+                   Margin="0,0,8,0"
+                   Command="{Binding SetViewKindCommand}"
+                   CommandParameter="{x:Static m:TimetableViewKind.Class}"
+                   IsChecked="{Binding ViewKind, Converter={StaticResource EnumToBoolean}, ConverterParameter=Class, Mode=OneWay}" />
+      <RadioButton Content="O'qituvchi"
+                   GroupName="korinish"
+                   Margin="0,0,8,0"
+                   Command="{Binding SetViewKindCommand}"
+                   CommandParameter="{x:Static m:TimetableViewKind.Teacher}"
+                   IsChecked="{Binding ViewKind, Converter={StaticResource EnumToBoolean}, ConverterParameter=Teacher, Mode=OneWay}" />
+      <RadioButton Content="Xona"
+                   GroupName="korinish"
+                   Margin="0,0,8,0"
+                   Command="{Binding SetViewKindCommand}"
+                   CommandParameter="{x:Static m:TimetableViewKind.Room}"
+                   IsChecked="{Binding ViewKind, Converter={StaticResource EnumToBoolean}, ConverterParameter=Room, Mode=OneWay}" />
+      <RadioButton Content="Umumiy"
+                   GroupName="korinish"
+                   Margin="0,0,16,0"
+                   Command="{Binding SetViewKindCommand}"
+                   CommandParameter="{x:Static m:TimetableViewKind.All}"
+                   IsChecked="{Binding ViewKind, Converter={StaticResource EnumToBoolean}, ConverterParameter=All, Mode=OneWay}" />
+
+      <ComboBox Width="200"
+                Margin="0,0,10,0"
+                VerticalAlignment="Center"
+                ItemsSource="{Binding Scopes}"
+                SelectedItem="{Binding SelectedScope, Mode=TwoWay}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TimetableScopeOption">
+            <TextBlock Text="{Binding Name}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <!-- Ikki smena: sinflar va soat raqamlari smena bo'yicha filtrlanadi.
+           Soat raqamlari uzluksiz: 1-smena 1..6, 2-smena 7..12. -->
+      <ComboBox Width="160"
+                Margin="0,0,16,0"
+                VerticalAlignment="Center"
+                IsVisible="{Binding HasShifts}"
+                ItemsSource="{Binding Shifts}"
+                SelectedItem="{Binding SelectedShift, Mode=TwoWay}"
+                ToolTip.Tip="Smena bo'yicha filtr">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:TimetableShiftOption">
+            <TextBlock Text="{Binding Name}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+
+      <Button Content="↶"
+              Margin="0,0,4,0"
+              Command="{Binding UndoCommand}"
+              ToolTip.Tip="{Binding UndoTooltip}" />
+      <Button Content="↷"
+              Margin="0,0,10,0"
+              Command="{Binding RedoCommand}"
+              ToolTip.Tip="{Binding RedoTooltip}" />
+      <TextBlock Text="{Binding HistoryText}"
+                 VerticalAlignment="Center"
+                 Margin="0,0,16,0"
+                 FontSize="11"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+
+      <Button Content="−" Margin="0,0,4,0" Command="{Binding ZoomOutCommand}" ToolTip.Tip="Kichiklashtirish (-)" />
+      <Button Content="+" Margin="0,0,4,0" Command="{Binding ZoomInCommand}" ToolTip.Tip="Kattalashtirish (+)" />
+      <TextBlock Text="{Binding Metrics.ZoomText}"
+                 VerticalAlignment="Center"
+                 Margin="0,0,10,0"
+                 FontSize="11"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+
+      <ComboBox Width="120"
+                Margin="0,0,10,0"
+                VerticalAlignment="Center"
+                SelectedIndex="1"
+                SelectionChanged="OnDensityChanged"
+                ToolTip.Tip="Katak zichligi">
+        <ComboBoxItem Content="Zich" />
+        <ComboBoxItem Content="Oddiy" />
+        <ComboBoxItem Content="Keng" />
+      </ComboBox>
+
+      <Button Content="Yangilash" Command="{Binding RefreshCommand}" />
+    </WrapPanel>
+
+    <!-- ================= "Karta qo'lda" holati ================= -->
+    <Border Grid.Row="1"
+            Margin="0,0,0,8"
+            Padding="10,6"
+            CornerRadius="4"
+            IsVisible="{Binding HasCardInHand}"
+            Background="{DynamicResource AppHeaderBrush}">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="{Binding HandText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding HoverReason}"
+                   Margin="14,0,0,0"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource AppMutedTextBrush}" />
+        <Button Content="ESC — bekor qilish"
+                Margin="14,0,0,0"
+                Padding="10,2"
+                FontSize="11"
+                Command="{Binding CancelDragCommand}" />
+        <Button Content="Panelga qaytarish"
+                Margin="6,0,0,0"
+                Padding="10,2"
+                FontSize="11"
+                Command="{Binding ReturnToPanelCommand}" />
+      </StackPanel>
+    </Border>
+
+    <!-- ================= To'r + joylashtirilmagan kartalar ================= -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+
+      <TextBlock Grid.Column="0"
+                 IsVisible="{Binding IsGridEmpty}"
+                 Text="{Binding EmptyMessage}"
+                 TextWrapping="Wrap"
+                 VerticalAlignment="Top"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+
+      <Border Grid.Column="0"
+              IsVisible="{Binding !IsGridEmpty}"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource AppBorderBrush}">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <DockPanel>
+
+            <!-- Sarlavha qatori: aylantirilganda joyida qoladi -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+              <Border Classes="tor-sarlavha" Width="{Binding Metrics.HeaderWidth}">
+                <TextBlock Text="SINF / O'QITUVCHI"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Margin="8,7"
+                           TextTrimming="CharacterEllipsis" />
+              </Border>
+              <Border Classes="tor-sarlavha" Width="{Binding Metrics.PeriodWidth}">
+                <TextBlock Text="SOAT" FontSize="10" FontWeight="Bold" Margin="8,7" />
+              </Border>
+
+              <ItemsControl ItemsSource="{Binding DayHeaders}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TimetableDayHeaderViewModel">
+                    <Border Classes="tor-sarlavha" Width="{Binding Metrics.CellWidth}">
+                      <Panel>
+                        <!-- Drag paytida kun sarlavhasi ham bo'yaladi (aSc §4.1) -->
+                        <Border IsVisible="{Binding Rating, Converter={StaticResource NotNullToBoolean}}"
+                                Opacity="0.7"
+                                Background="{Binding Rating, Converter={StaticResource PlacementRatingToBrush}, ConverterParameter=Background}" />
+                        <TextBlock Text="{Binding Title}"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   Margin="8,7"
+                                   HorizontalAlignment="Center" />
+                      </Panel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Tana: VIRTUALIZATSIYA shu yerda -->
+            <ScrollViewer x:Name="BodyScroll"
+                          MaxHeight="640"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl x:Name="RowsHost"
+                            ItemsSource="{Binding Rows}"
+                            ItemTemplate="{StaticResource RowTemplate}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <VirtualizingStackPanel Orientation="Vertical" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Joylashtirilmagan kartalar paneli -->
+      <Border Grid.Column="1"
+              Width="230"
+              Margin="12,0,0,0"
+              Padding="10"
+              CornerRadius="6"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource AppBorderBrush}"
+              Background="{DynamicResource AppSurfaceBrush}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock Text="Joylashtirilmagan kartalar" FontWeight="SemiBold" FontSize="12" />
+            <TextBlock Text="{Binding UnplacedText}"
+                       FontSize="11"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+            <TextBlock Text="Kartani bosing → jadvalda kerakli katakni bosing."
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+          </StackPanel>
+
+          <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="560">
+            <ItemsControl x:Name="UnplacedHost"
+                          ItemsSource="{Binding UnplacedCards}"
+                          ItemTemplate="{StaticResource UnplacedTemplate}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <VirtualizingStackPanel Orientation="Vertical" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

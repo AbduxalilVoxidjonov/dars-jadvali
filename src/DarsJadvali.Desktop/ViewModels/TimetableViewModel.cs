@@ -1,35 +1,57 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using Avalonia;
-using Avalonia.Media;
-using Avalonia.Media.Immutable;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DarsJadvali.Application.Abstractions;
+using DarsJadvali.Application.Board;
 using DarsJadvali.Application.Export;
 using DarsJadvali.Application.Services;
 using DarsJadvali.Application.Validation;
+using DarsJadvali.Desktop.Models;
 using DarsJadvali.Desktop.Services;
+using DarsJadvali.Desktop.Services.Timetable;
 using DarsJadvali.Domain.Entities;
 using DarsJadvali.Domain.Enums;
+using DarsJadvali.Infrastructure.Export;
 
 namespace DarsJadvali.Desktop.ViewModels;
 
 /// <summary>Dars jadvali ekrani — ko'rish, qo'yish va o'chirish.</summary>
+/// <remarks>
+/// <para>
+/// <b>Yagona manba.</b> Bu sahifa ham bosh sahifadagi jadval yadrosi ham AYNI
+/// <c>Card</c>/<c>Lesson</c> modeli ustida ishlaydi. Ilgari bu ekran eski
+/// <c>ScheduleEntry</c> ga yozardi va natijada ikkita ekran ikki xil jadvalni
+/// ko'rsatib qolishi mumkin edi.
+/// </para>
+/// <para>
+/// Baholash <see cref="TimetableBoard"/> orqali xotirada bajariladi (qoidalar
+/// <c>ScheduleSnapshot</c> dan), yozish esa <see cref="TimetableBoardWriter"/>
+/// orqali bitta tranzaksiyada ketadi.
+/// </para>
+/// </remarks>
 public sealed partial class TimetableViewModel : ViewModelBase
 {
-    private readonly IScheduleService _schedule;
-    private readonly IWorkDayService _workDays;
+    private readonly ICardBoardService _cards;
+    private readonly IScheduleSnapshotProvider _snapshots;
+    private readonly ISchedulingStore _store;
+    private readonly IScheduleSetService _schedules;
     private readonly ITeacherService _teachers;
     private readonly ISubjectService _subjects;
-    private readonly IClassGroupService _classGroups;
-    private readonly ISchoolTimetablePdfExporter _pdfExporter;
+    private readonly IAvailabilityService _availability;
+    private readonly IScopedTimetablePdfExporter _pdfExporter;
     private readonly IDialogService _dialogs;
     private readonly MainViewModel _main;
 
+    private readonly TimetableBoard _board = new();
+    private readonly TimetableBoardWriter _writer;
+
     private readonly List<WeekDay> _activeDays = new();
     private readonly Dictionary<int, string> _slotTimes = new();
+    private readonly Dictionary<int, int> _periodIdByNumber = new();
 
-    private int _maxLessonNumber = 7;
+    private IReadOnlyList<int> _periodNumbers = Array.Empty<int>();
+    private int _scheduleId;
     private bool _isInitializing;
 
     [ObservableProperty]
@@ -39,7 +61,7 @@ public sealed partial class TimetableViewModel : ViewModelBase
     private bool _isTeacherMode;
 
     [ObservableProperty]
-    private ClassGroup? _filterClassGroup;
+    private SchoolClass? _filterClassGroup;
 
     [ObservableProperty]
     private Teacher? _filterTeacher;
@@ -51,16 +73,11 @@ public sealed partial class TimetableViewModel : ViewModelBase
     private string _selectedCellText = "Katak tanlanmagan.";
 
     [ObservableProperty]
-    private ClassGroup? _placeClassGroup;
+    private SchoolClass? _placeClassGroup;
 
+    /// <summary>Qo'yiladigan dars — joylashtirilmagan (rejada bor) darslar ro'yxatidan.</summary>
     [ObservableProperty]
-    private Subject? _placeSubject;
-
-    [ObservableProperty]
-    private Teacher? _placeTeacher;
-
-    [ObservableProperty]
-    private string _placeRoom = string.Empty;
+    private UnplacedLessonOption? _placeLesson;
 
     [ObservableProperty]
     private int _gridColumnCount = 1;
@@ -76,23 +93,29 @@ public sealed partial class TimetableViewModel : ViewModelBase
 
     /// <summary>Yangi dars jadvali ViewModel'i yaratadi.</summary>
     public TimetableViewModel(
-        IScheduleService schedule,
-        IWorkDayService workDays,
+        ICardBoardService cards,
+        IScheduleSnapshotProvider snapshots,
+        ISchedulingStore store,
+        IScheduleSetService schedules,
         ITeacherService teachers,
         ISubjectService subjects,
-        IClassGroupService classGroups,
-        ISchoolTimetablePdfExporter pdfExporter,
+        IAvailabilityService availability,
+        IScopedTimetablePdfExporter pdfExporter,
         IDialogService dialogs,
         MainViewModel main)
     {
-        _schedule = schedule;
-        _workDays = workDays;
+        _cards = cards;
+        _snapshots = snapshots;
+        _store = store;
+        _schedules = schedules;
         _teachers = teachers;
         _subjects = subjects;
-        _classGroups = classGroups;
+        _availability = availability;
         _pdfExporter = pdfExporter;
         _dialogs = dialogs;
         _main = main;
+
+        _writer = new TimetableBoardWriter(cards);
     }
 
     /// <summary>Jadval to'ridagi barcha kataklar (sarlavhalar bilan birga, qator-qator).</summary>
@@ -102,40 +125,53 @@ public sealed partial class TimetableViewModel : ViewModelBase
     public ObservableCollection<ConflictRowViewModel> PlacementConflicts { get; } = new();
 
     /// <summary>Barcha sinflar.</summary>
-    public ObservableCollection<ClassGroup> ClassGroups { get; } = new();
-
-    /// <summary>Barcha fanlar.</summary>
-    public ObservableCollection<Subject> Subjects { get; } = new();
+    public ObservableCollection<SchoolClass> ClassGroups { get; } = new();
 
     /// <summary>Barcha o'qituvchilar.</summary>
     public ObservableCollection<Teacher> Teachers { get; } = new();
 
+    /// <summary>Tanlangan sinf uchun joylashtirilmagan darslar.</summary>
+    public ObservableCollection<UnplacedLessonOption> PlaceLessons { get; } = new();
+
     /// <inheritdoc />
-    public override async Task LoadAsync(CancellationToken ct = default)
+    public override Task LoadAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(LoadCoreAsync, ct);
+
+    private async Task LoadCoreAsync(CancellationToken ct)
     {
         try
         {
             IsBusy = true;
             _isInitializing = true;
 
-            // Ma'lumot bir marta o'qiladi.
-            var classGroups = await _classGroups.GetAllAsync(ct).ConfigureAwait(true);
-            var subjects = await _subjects.GetAllAsync(ct).ConfigureAwait(true);
-            var teachers = await _teachers.GetAllAsync(ct).ConfigureAwait(true);
-            var activeDays = await _workDays.GetActiveAsync(ct).ConfigureAwait(true);
-            var maxLesson = await _workDays.GetMaxLessonNumberAsync(ct).ConfigureAwait(true);
-            var slots = await _workDays.GetLessonSlotsAsync(ct).ConfigureAwait(true);
+            _scheduleId = await _schedules.GetActiveIdAsync(ct).ConfigureAwait(true);
 
-            ClassGroups.Clear();
-            foreach (var item in classGroups.OrderBy(c => c.Name, StringComparer.CurrentCulture))
+            // Ma'lumot bir marta o'qiladi.
+            var teachers = await _teachers.GetAllAsync(ct).ConfigureAwait(true);
+            var subjects = await _subjects.GetAllAsync(ct).ConfigureAwait(true);
+            var snapshot = await _snapshots.LoadAsync(_scheduleId, ct).ConfigureAwait(true);
+            var input = await _store.LoadAsync(_scheduleId, ct).ConfigureAwait(true);
+            var cardViews = await _cards.GetCardsAsync(_scheduleId, ct).ConfigureAwait(true);
+            var unplaced = await _cards.GetUnplacedAsync(_scheduleId, ct).ConfigureAwait(true);
+            var availability = await _availability.GetLessonAvailabilityForAllAsync(ct).ConfigureAwait(true);
+
+            _slotTimes.Clear();
+            _periodIdByNumber.Clear();
+
+            foreach (var period in input.Periods.Where(p => !p.IsBreak).OrderBy(p => p.PeriodNo))
             {
-                ClassGroups.Add(item);
+                _periodIdByNumber[period.PeriodNo] = period.Id;
+                _slotTimes[period.PeriodNo] = ToTimeText(period.StartTime) + " - " + ToTimeText(period.EndTime);
             }
 
-            Subjects.Clear();
-            foreach (var item in subjects.OrderBy(s => s.Name, StringComparer.CurrentCulture))
+            _periodNumbers = _periodIdByNumber.Keys.OrderBy(n => n).ToList();
+
+            var classes = input.Classes.Where(c => !c.IsDeleted).ToList();
+
+            ClassGroups.Clear();
+            foreach (var item in classes.OrderBy(c => c.Name, StringComparer.CurrentCulture))
             {
-                Subjects.Add(item);
+                ClassGroups.Add(item);
             }
 
             Teachers.Clear();
@@ -145,15 +181,29 @@ public sealed partial class TimetableViewModel : ViewModelBase
             }
 
             _activeDays.Clear();
-            _activeDays.AddRange(activeDays.OrderBy(w => w.DayOfWeek).Select(w => w.DayOfWeek));
+            _activeDays.AddRange(snapshot.ActiveWorkDays.Select(w => w.DayOfWeek));
 
-            _maxLessonNumber = maxLesson > 0 ? maxLesson : 7;
+            var blocked = ToBlockedSlots(availability, snapshot);
+            var rules = CardViewAdapter.ToRuleSet(snapshot, _periodNumbers, blocked);
 
-            _slotTimes.Clear();
-            foreach (var slot in slots)
+            var classIdByName = new Dictionary<string, int>(StringComparer.CurrentCulture);
+            foreach (var item in classes)
             {
-                _slotTimes[slot.LessonNumber] = ToTimeText(slot.StartTime) + " - " + ToTimeText(slot.EndTime);
+                classIdByName[item.Name] = item.Id;
             }
+
+            var placed = CardViewAdapter.ToCards(cardViews, teachers, subjects);
+            var pending = CardViewAdapter.ToUnplacedCards(
+                unplaced,
+                teachers,
+                subjects,
+                cardViews.Count == 0 ? 1_000_000 : Math.Max(1_000_000, cardViews.Max(v => v.CardId) + 1),
+                classIdByName);
+
+            _board.Load(placed.Concat(pending), rules);
+            _board.ClearDirty();
+
+            RebuildPlaceLessons(unplaced, classIdByName);
 
             // Sinf ro'yxati yangilangani uchun avvalgi tanlovni yangi obyektlarga bog'laymiz.
             FilterClassGroup = FindClassGroup(FilterClassGroup?.Id) ?? ClassGroups.FirstOrDefault();
@@ -162,24 +212,29 @@ public sealed partial class TimetableViewModel : ViewModelBase
             // Bosh sahifadan "Tahrirlash" bosilgan bo'lsa — o'sha sinfga o'tamiz.
             if (_main.PendingClassGroupId is int pendingId)
             {
-                var pending = FindClassGroup(pendingId);
+                var pendingClass = FindClassGroup(pendingId) ??
+                                   ClassGroups.FirstOrDefault(c => c.LegacyClassGroupId == pendingId);
 
-                if (pending is not null)
+                if (pendingClass is not null)
                 {
                     IsTeacherMode = false;
                     IsClassMode = true;
-                    FilterClassGroup = pending;
+                    FilterClassGroup = pendingClass;
                 }
 
                 _main.PendingClassGroupId = null;
             }
 
             PlaceClassGroup = FilterClassGroup;
-            PlaceTeacher = FilterTeacher;
 
             _isInitializing = false;
 
-            await RefreshGridAsync().ConfigureAwait(true);
+            BuildGrid();
+            RefreshPlaceOptions();
+
+            StatusMessage = IsTeacherMode
+                ? $"{FilterTeacher?.FullName ?? "O'qituvchi tanlanmagan"} jadvali."
+                : $"{FilterClassGroup?.Name ?? "Sinf tanlanmagan"} jadvali.";
         }
         catch (OperationCanceledException)
         {
@@ -197,7 +252,58 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
     }
 
-    private ClassGroup? FindClassGroup(int? id)
+    /// <summary>
+    /// Ommaviy bandlik natijasini (o'qituvchi, kun, soat) uchliklariga aylantiradi.
+    /// </summary>
+    private List<(int TeacherId, WeekDay Day, int Period)> ToBlockedSlots(
+        IReadOnlyDictionary<int, IReadOnlyList<TeacherDayAvailability>> availability,
+        ScheduleSnapshot snapshot)
+    {
+        var result = new List<(int, WeekDay, int)>();
+
+        foreach (var (teacherId, days) in availability)
+        {
+            foreach (var day in days)
+            {
+                if (!day.HasRestriction)
+                {
+                    continue;
+                }
+
+                var allowed = new HashSet<int>(day.AllowedLessonNumbers);
+                var max = snapshot.MaxLessonNumberOf(day.Day);
+
+                foreach (var period in _periodNumbers)
+                {
+                    if (max > 0 && period > max)
+                    {
+                        continue;
+                    }
+
+                    if (!allowed.Contains(period))
+                    {
+                        result.Add((teacherId, day.Day, period));
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private void RebuildPlaceLessons(
+        IReadOnlyList<UnplacedLessonView> unplaced, IReadOnlyDictionary<string, int> classIdByName)
+    {
+        PlaceLessons.Clear();
+
+        foreach (var lesson in unplaced.Where(l => l.RemainingPeriods > 0))
+        {
+            classIdByName.TryGetValue(lesson.ClassName, out var classId);
+            PlaceLessons.Add(new UnplacedLessonOption(lesson, classId));
+        }
+    }
+
+    private SchoolClass? FindClassGroup(int? id)
         => id is null ? null : ClassGroups.FirstOrDefault(c => c.Id == id.Value);
 
     private Teacher? FindTeacher(int? id)
@@ -211,7 +317,7 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
 
         IsTeacherMode = false;
-        _ = RefreshGridAsync();
+        BuildGrid();
     }
 
     partial void OnIsTeacherModeChanged(bool value)
@@ -222,10 +328,10 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
 
         IsClassMode = false;
-        _ = RefreshGridAsync();
+        BuildGrid();
     }
 
-    partial void OnFilterClassGroupChanged(ClassGroup? value)
+    partial void OnFilterClassGroupChanged(SchoolClass? value)
     {
         if (_isInitializing || !IsClassMode)
         {
@@ -233,7 +339,7 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
 
         PlaceClassGroup = value;
-        _ = RefreshGridAsync();
+        BuildGrid();
     }
 
     partial void OnFilterTeacherChanged(Teacher? value)
@@ -243,65 +349,71 @@ public sealed partial class TimetableViewModel : ViewModelBase
             return;
         }
 
-        PlaceTeacher = value;
-        _ = RefreshGridAsync();
+        BuildGrid();
+    }
+
+    partial void OnPlaceClassGroupChanged(SchoolClass? value)
+    {
+        if (_isInitializing)
+        {
+            return;
+        }
+
+        RefreshPlaceOptions();
     }
 
     partial void OnPlacementSummaryChanged(string value)
         => HasPlacementSummary = !string.IsNullOrWhiteSpace(value);
 
-    [RelayCommand]
-    private async Task RefreshGridAsync()
+    /// <summary>Qo'yish paneli uchun tanlangan sinfning joylashtirilmagan darslarini ko'rsatadi.</summary>
+    private void RefreshPlaceOptions()
     {
-        try
+        foreach (var option in PlaceLessons)
         {
-            IsBusy = true;
-
-            IReadOnlyList<ScheduleEntry> entries;
-
-            if (IsTeacherMode)
-            {
-                entries = FilterTeacher is null
-                    ? Array.Empty<ScheduleEntry>()
-                    : await _schedule.GetByTeacherAsync(FilterTeacher.Id).ConfigureAwait(true);
-            }
-            else
-            {
-                entries = FilterClassGroup is null
-                    ? Array.Empty<ScheduleEntry>()
-                    : await _schedule.GetByClassGroupAsync(FilterClassGroup.Id).ConfigureAwait(true);
-            }
-
-            BuildGrid(entries);
-
-            StatusMessage = IsTeacherMode
-                ? $"{FilterTeacher?.FullName ?? "O'qituvchi tanlanmagan"} — {entries.Count} ta dars."
-                : $"{FilterClassGroup?.Name ?? "Sinf tanlanmagan"} — {entries.Count} ta dars.";
+            option.IsVisibleForClass = PlaceClassGroup is null || option.ClassId == PlaceClassGroup.Id;
         }
-        catch (Exception ex)
+
+        if (PlaceLesson is not null && !PlaceLesson.IsVisibleForClass)
         {
-            await _dialogs.ErrorAsync("Jadvalni yangilashda xatolik yuz berdi.\n\n" + ex.Message)
-                .ConfigureAwait(true);
+            PlaceLesson = null;
         }
-        finally
-        {
-            IsBusy = false;
-        }
+
+        OnPropertyChanged(nameof(VisiblePlaceLessons));
     }
 
-    private void BuildGrid(IReadOnlyList<ScheduleEntry> entries)
+    /// <summary>Tanlangan sinfga tegishli joylashtirilmagan darslar.</summary>
+    public IEnumerable<UnplacedLessonOption> VisiblePlaceLessons
+        => PlaceLessons.Where(o => o.IsVisibleForClass);
+
+    /// <summary>To'rni bazadan qayta o'qiydi (navbat orqali).</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task RefreshGridAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(LoadCoreAsync, ct);
+
+    private void BuildGrid()
     {
         SelectedCell = null;
         SelectedCellText = "Katak tanlanmagan.";
         Cells.Clear();
 
         var days = _activeDays.Count > 0 ? _activeDays : WeekDayExtensions.All.Take(6).ToList();
+        var periods = _periodNumbers.Count > 0 ? _periodNumbers : Enumerable.Range(1, 7).ToList();
+
         GridColumnCount = days.Count + 1;
 
-        var lookup = new Dictionary<(WeekDay Day, int Lesson), ScheduleEntry>();
-        foreach (var entry in entries)
+        var lookup = new Dictionary<(WeekDay Day, int Period), TimetableCard>();
+
+        foreach (var card in _board.Cards.Where(c => c.IsPlaced))
         {
-            lookup[(entry.DayOfWeek, entry.LessonNumber)] = entry;
+            if (!Matches(card))
+            {
+                continue;
+            }
+
+            foreach (var period in card.OccupiedPeriods)
+            {
+                lookup[(card.Day!.Value, period)] = card;
+            }
         }
 
         // Birinchi qator — kun nomlari
@@ -312,14 +424,14 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
 
         // Qolgan qatorlar
-        for (var lesson = 1; lesson <= _maxLessonNumber; lesson++)
+        foreach (var period in periods)
         {
-            _slotTimes.TryGetValue(lesson, out var time);
+            _slotTimes.TryGetValue(period, out var time);
 
             Cells.Add(new TimetableCellViewModel(this)
             {
                 IsHeader = true,
-                HeaderText = lesson + "-dars",
+                HeaderText = period + "-dars",
                 HeaderSubText = time ?? string.Empty,
             });
 
@@ -328,25 +440,43 @@ public sealed partial class TimetableViewModel : ViewModelBase
                 var cell = new TimetableCellViewModel(this)
                 {
                     Day = day,
-                    LessonNumber = lesson,
+                    LessonNumber = period,
                 };
 
-                if (lookup.TryGetValue((day, lesson), out var entry))
+                if (lookup.TryGetValue((day, period), out var card))
                 {
-                    cell.EntryId = entry.Id;
-                    cell.SubjectName = entry.Subject?.Name ?? "(fan)";
-                    cell.PersonName = IsTeacherMode
-                        ? entry.ClassGroup?.Name ?? "(sinf)"
-                        : entry.Teacher?.FullName ?? "(o'qituvchi)";
-                    cell.RoomText = string.IsNullOrWhiteSpace(entry.RoomNumber)
-                        ? string.Empty
-                        : entry.RoomNumber!;
-                    cell.ColorCode = entry.Teacher?.ColorCode ?? "#90A4AE";
+                    cell.CardId = card.Id;
+                    cell.SubjectName = card.SubjectName;
+                    cell.PersonName = IsTeacherMode ? card.ScopeText : card.TeacherText;
+                    cell.RoomText = card.RoomNumber ?? string.Empty;
+                    cell.ColorCode = card.ColorCode;
                 }
 
                 Cells.Add(cell);
             }
         }
+
+        StatusMessage = IsTeacherMode
+            ? $"{FilterTeacher?.FullName ?? "O'qituvchi tanlanmagan"} — {lookup.Values.Distinct().Count()} ta dars."
+            : $"{FilterClassGroup?.Name ?? "Sinf tanlanmagan"} — {lookup.Values.Distinct().Count()} ta dars.";
+    }
+
+    /// <summary>Karta joriy filtrga tushadimi.</summary>
+    private bool Matches(TimetableCard card)
+    {
+        if (IsTeacherMode)
+        {
+            return FilterTeacher is not null && card.TeacherIds.Contains(FilterTeacher.Id);
+        }
+
+        if (FilterClassGroup is null)
+        {
+            return false;
+        }
+
+        return card.ClassIds.Count > 0
+            ? card.ClassIds.Contains(FilterClassGroup.Id)
+            : card.ClassGroupId == FilterClassGroup.Id;
     }
 
     /// <summary>Katak bosilganda chaqiriladi.</summary>
@@ -369,23 +499,36 @@ public sealed partial class TimetableViewModel : ViewModelBase
         SelectedCellText = $"{cell.Day.ToUzbek()}, {cell.LessonNumber}-dars" +
                            (string.IsNullOrEmpty(time) ? string.Empty : $" ({time})");
 
-        // Rejimga qarab tanlovni oldindan to'ldiramiz
         if (IsClassMode && FilterClassGroup is not null)
         {
             PlaceClassGroup = FilterClassGroup;
         }
-
-        if (IsTeacherMode && FilterTeacher is not null)
-        {
-            PlaceTeacher = FilterTeacher;
-        }
     }
 
     /// <summary>Katakdagi darsni o'chiradi.</summary>
-    public async Task DeleteEntryAsync(TimetableCellViewModel cell)
+    public Task DeleteEntryAsync(TimetableCellViewModel cell, CancellationToken ct = default)
     {
         if (cell is null || !cell.HasEntry)
         {
+            return Task.CompletedTask;
+        }
+
+        return RunExclusiveAsync(token => DeleteEntryCoreAsync(cell, token), ct);
+    }
+
+    private async Task DeleteEntryCoreAsync(TimetableCellViewModel cell, CancellationToken ct)
+    {
+        var card = cell.CardId is { } id ? _board.FindById(id) : null;
+
+        if (card is null)
+        {
+            return;
+        }
+
+        if (card.IsLocked)
+        {
+            await _dialogs.InfoAsync("Bu dars qulflangan — avval bosh sahifadagi jadvaldan qulfni oching.")
+                .ConfigureAwait(true);
             return;
         }
 
@@ -402,8 +545,16 @@ public sealed partial class TimetableViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await _schedule.RemoveAsync(cell.EntryId!.Value).ConfigureAwait(true);
+
+            // Kartani joylashtirilmaganlar ro'yxatiga qaytaramiz — bu bazada kartochkani o'chiradi.
+            _board.MoveCard(card, null);
+            await PersistAsync(ct).ConfigureAwait(true);
+
             StatusMessage = "Dars o'chirildi.";
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -416,11 +567,15 @@ public sealed partial class TimetableViewModel : ViewModelBase
             IsBusy = false;
         }
 
-        await RefreshGridAsync().ConfigureAwait(true);
+        await LoadCoreAsync(ct).ConfigureAwait(true);
     }
 
-    [RelayCommand]
-    private async Task PlaceAsync()
+    /// <summary>Tanlangan katakka dars qo'yadi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task PlaceAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(PlaceCoreAsync, ct);
+
+    private async Task PlaceCoreAsync(CancellationToken ct)
     {
         if (SelectedCell is null || SelectedCell.IsHeader)
         {
@@ -428,115 +583,114 @@ public sealed partial class TimetableViewModel : ViewModelBase
             return;
         }
 
-        if (PlaceClassGroup is null)
+        if (PlaceLesson is null)
         {
-            await _dialogs.ErrorAsync("Sinfni tanlang.").ConfigureAwait(true);
+            await _dialogs.ErrorAsync(
+                    "Qo'yiladigan darsni tanlang. Ro'yxatda faqat rejada bor, lekin hali " +
+                    "joylashtirilmagan darslar ko'rinadi.")
+                .ConfigureAwait(true);
             return;
         }
 
-        if (PlaceSubject is null)
+        // Shu dars uchun hali kartochkasi yo'q kartani topamiz.
+        var card = _board.Cards.FirstOrDefault(c =>
+            !c.IsPlaced && c.EntityId is null && c.LessonId == PlaceLesson.LessonId);
+
+        if (card is null)
         {
-            await _dialogs.ErrorAsync("Fanni tanlang.").ConfigureAwait(true);
+            await _dialogs.InfoAsync("Bu dars uchun qo'yiladigan soat qolmadi.").ConfigureAwait(true);
             return;
         }
 
-        if (PlaceTeacher is null)
+        var day = SelectedCell.Day;
+        var period = SelectedCell.LessonNumber;
+
+        var evaluation = _board.Evaluate(card, day, period);
+        ShowEvaluation(evaluation);
+
+        if (!evaluation.IsAllowed)
         {
-            await _dialogs.ErrorAsync("O'qituvchini tanlang.").ConfigureAwait(true);
+            PlacementSummary = "Dars qo'yilmadi — to'siqlar mavjud.";
+            await _dialogs.InfoAsync(evaluation.ReasonText, "Dars qo'yilmadi").ConfigureAwait(true);
             return;
         }
 
-        var room = string.IsNullOrWhiteSpace(PlaceRoom) ? null : PlaceRoom.Trim();
+        if (evaluation.Reasons.Count > 0)
+        {
+            var accepted = await _dialogs.ConfirmAsync(
+                    evaluation.ReasonText + "\n\nBaribir qo'yilsinmi?", "Ogohlantirish")
+                .ConfigureAwait(true);
 
-        var draft = new ScheduleEntryDraft(
-            null,
-            PlaceClassGroup.Id,
-            PlaceSubject.Id,
-            PlaceTeacher.Id,
-            SelectedCell.Day,
-            SelectedCell.LessonNumber,
-            room);
+            if (!accepted)
+            {
+                PlacementSummary = "Dars qo'yilmadi.";
+                return;
+            }
+        }
 
         try
         {
             IsBusy = true;
 
-            var result = await _schedule.PlaceAsync(draft, false).ConfigureAwait(true);
-            ShowConflicts(result.Validation);
+            _board.MoveCard(card, new SlotPosition(day, period));
+            await PersistAsync(ct).ConfigureAwait(true);
 
-            if (result.Placed)
-            {
-                PlacementSummary = "Dars muvaffaqiyatli qo'yildi.";
-                StatusMessage = PlacementSummary;
-                await RefreshGridAsync().ConfigureAwait(true);
-                return;
-            }
-
-            // Error darajali to'siq — qo'yilmaydi.
-            if (!result.Validation.IsValid)
-            {
-                PlacementSummary = "Dars qo'yilmadi — to'siqlar mavjud.";
-                await _dialogs.ShowValidationAsync(result.Validation).ConfigureAwait(true);
-                return;
-            }
-
-            // Faqat ogohlantirish — foydalanuvchidan so'raymiz.
-            if (result.Validation.HasWarnings)
-            {
-                var accepted = await _dialogs.ConfirmWarningsAsync(result.Validation).ConfigureAwait(true);
-
-                if (!accepted)
-                {
-                    PlacementSummary = "Dars qo'yilmadi.";
-                    return;
-                }
-
-                var forced = await _schedule.PlaceAsync(draft, true).ConfigureAwait(true);
-                ShowConflicts(forced.Validation);
-
-                if (forced.Placed)
-                {
-                    PlacementSummary = "Dars ogohlantirishga qaramay qo'yildi.";
-                    StatusMessage = PlacementSummary;
-                    await RefreshGridAsync().ConfigureAwait(true);
-                }
-                else
-                {
-                    PlacementSummary = "Dars qo'yilmadi.";
-                    await _dialogs.ShowValidationAsync(forced.Validation).ConfigureAwait(true);
-                }
-
-                return;
-            }
-
-            PlacementSummary = "Dars qo'yilmadi.";
+            PlacementSummary = "Dars muvaffaqiyatli qo'yildi.";
+            StatusMessage = PlacementSummary;
+        }
+        catch (OperationCanceledException)
+        {
+            PlacementSummary = string.Empty;
+            return;
         }
         catch (Exception ex)
         {
             PlacementSummary = "Xatolik yuz berdi.";
             await _dialogs.ErrorAsync("Darsni qo'yishda xatolik yuz berdi.\n\n" + ex.Message)
                 .ConfigureAwait(true);
+            return;
         }
         finally
         {
             IsBusy = false;
         }
+
+        await LoadCoreAsync(ct).ConfigureAwait(true);
     }
 
-    private void ShowConflicts(ValidationResult validation)
+    /// <summary>Taxtadagi o'zgarishlarni bazaga yozadi.</summary>
+    private async Task PersistAsync(CancellationToken ct)
+    {
+        var context = new BoardWriteContext(_scheduleId, _periodIdByNumber);
+        var result = await _writer.SaveAsync(_board, context, ct).ConfigureAwait(true);
+
+        if (result.HasRejections)
+        {
+            throw new InvalidOperationException(
+                string.Join("\n", result.Rejections.Select(r => r.Message)));
+        }
+
+        _board.ClearDirty();
+    }
+
+    private void ShowEvaluation(PlacementEvaluation evaluation)
     {
         PlacementConflicts.Clear();
 
-        foreach (var conflict in validation.Conflicts)
+        var severity = evaluation.IsAllowed ? ConflictSeverity.Warning : ConflictSeverity.Error;
+        var code = evaluation.IsAllowed ? ConflictCodes.SubjectRepeatedInDay : ConflictCodes.ClassBusy;
+
+        foreach (var reason in evaluation.Reasons)
         {
-            PlacementConflicts.Add(new ConflictRowViewModel(conflict));
+            PlacementConflicts.Add(new ConflictRowViewModel(new Conflict(severity, code, reason)));
         }
 
         HasPlacementResult = true;
     }
 
-    [RelayCommand]
-    private async Task DeleteSelectedAsync()
+    /// <summary>Tanlangan katakdagi darsni o'chiradi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private async Task DeleteSelectedAsync(CancellationToken ct = default)
     {
         if (SelectedCell is null || !SelectedCell.HasEntry)
         {
@@ -544,19 +698,23 @@ public sealed partial class TimetableViewModel : ViewModelBase
             return;
         }
 
-        await DeleteEntryAsync(SelectedCell).ConfigureAwait(true);
+        await DeleteEntryAsync(SelectedCell, ct).ConfigureAwait(true);
     }
 
-    [RelayCommand]
-    private async Task ClearScheduleAsync()
+    /// <summary>Sinf yoki butun maktab jadvalini tozalaydi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ClearScheduleAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ClearScheduleCoreAsync, ct);
+
+    private async Task ClearScheduleCoreAsync(CancellationToken ct)
     {
-        int? classGroupId = null;
+        SchoolClass? target = null;
         string question;
 
         if (IsClassMode && FilterClassGroup is not null)
         {
-            classGroupId = FilterClassGroup.Id;
-            question = $"\"{FilterClassGroup.Name}\" sinfining butun jadvali o'chirilsinmi?" +
+            target = FilterClassGroup;
+            question = $"\"{target.Name}\" sinfining butun jadvali o'chirilsinmi?" +
                        "\n\nBu amalni qaytarib bo'lmaydi.";
         }
         else
@@ -574,11 +732,25 @@ public sealed partial class TimetableViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            await _schedule.ClearAsync(classGroupId).ConfigureAwait(true);
+
+            foreach (var card in _board.Cards.Where(c => c.IsPlaced && !c.IsLocked).ToList())
+            {
+                if (target is null || card.ClassIds.Contains(target.Id) || card.ClassGroupId == target.Id)
+                {
+                    _board.MoveCard(card, null);
+                }
+            }
+
+            await PersistAsync(ct).ConfigureAwait(true);
+
             StatusMessage = "Jadval tozalandi.";
             PlacementConflicts.Clear();
             PlacementSummary = string.Empty;
             HasPlacementResult = false;
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -591,28 +763,46 @@ public sealed partial class TimetableViewModel : ViewModelBase
             IsBusy = false;
         }
 
-        await RefreshGridAsync().ConfigureAwait(true);
+        await LoadCoreAsync(ct).ConfigureAwait(true);
     }
 
     /// <summary>Joriy tanlovga mos jadvalni PDF ga yuklab oladi.</summary>
-    [RelayCommand]
-    private async Task ExportPdfAsync(CancellationToken ct = default)
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ExportPdfAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ExportPdfCoreAsync, ct);
+
+    private async Task ExportPdfCoreAsync(CancellationToken ct)
     {
+        // E-01: qamrov ANIQ tanlanadi — "butun maktab" tasodifan chiqmaydi.
+        if (IsTeacherMode && FilterTeacher is null)
+        {
+            await _dialogs.InfoAsync("Avval o'qituvchini tanlang.").ConfigureAwait(true);
+            return;
+        }
+
+        if (!IsTeacherMode && FilterClassGroup is null)
+        {
+            await _dialogs.InfoAsync("Avval sinfni tanlang.").ConfigureAwait(true);
+            return;
+        }
+
         try
         {
             IsBusy = true;
             StatusMessage = "PDF tayyorlanmoqda...";
 
-            var options = new PdfExportOptions
-            {
-                ClassGroupId = IsClassMode ? FilterClassGroup?.Id : null,
-                SchoolName = null,
-            };
+            var options = new PdfExportOptions { SchoolName = null };
 
-            var pdf = await _pdfExporter.ExportAsync(options, ct).ConfigureAwait(true);
-            var suggested = _pdfExporter.SuggestFileName(options, DateTime.Now);
+            // Eksport hali eski sinf identifikatorini kutadi (LegacyClassGroupId).
+            var legacyClassId = FilterClassGroup?.LegacyClassGroupId ?? FilterClassGroup?.Id ?? 0;
 
-            var path = await _dialogs.SaveFileAsync(suggested).ConfigureAwait(true);
+            var document = IsTeacherMode
+                ? await _pdfExporter
+                    .ExportTeacherScheduleAsync(FilterTeacher!.Id, options, ct).ConfigureAwait(true)
+                : await _pdfExporter
+                    .ExportClassScheduleAsync(legacyClassId, options, ct).ConfigureAwait(true);
+
+            var path = await _dialogs.SaveFileAsync(document.FileName).ConfigureAwait(true);
 
             if (path is null)
             {
@@ -620,7 +810,7 @@ public sealed partial class TimetableViewModel : ViewModelBase
                 return;
             }
 
-            await File.WriteAllBytesAsync(path, pdf, ct).ConfigureAwait(true);
+            await File.WriteAllBytesAsync(path, document.Content, ct).ConfigureAwait(true);
 
             StatusMessage = "PDF saqlandi.";
             await _dialogs.InfoAsync($"PDF saqlandi:\n{path}", "PDF yuklab olindi").ConfigureAwait(true);
@@ -639,9 +829,45 @@ public sealed partial class TimetableViewModel : ViewModelBase
         }
     }
 
-    /// <summary>TimeSpan ni "HH:mm" ko'rinishiga keltiradi.</summary>
-    private static string ToTimeText(TimeSpan value)
-        => value.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+    /// <summary>TimeOnly ni "HH:mm" ko'rinishiga keltiradi.</summary>
+    private static string ToTimeText(TimeOnly value)
+        => value.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+}
+
+/// <summary>Qo'yish panelidagi bitta joylashtirilmagan dars.</summary>
+public sealed partial class UnplacedLessonOption : ObservableObject
+{
+    /// <summary>Tanlangan sinf filtriga tushadimi.</summary>
+    [ObservableProperty]
+    private bool _isVisibleForClass = true;
+
+    /// <summary>Yangi band yaratadi.</summary>
+    public UnplacedLessonOption(UnplacedLessonView source, int classId)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        LessonId = source.LessonId;
+        ClassId = classId;
+
+        var scope = string.IsNullOrWhiteSpace(source.GroupName)
+            ? source.ClassName
+            : source.ClassName + " / " + source.GroupName;
+
+        var teachers = source.TeacherNames.Count == 0
+            ? string.Empty
+            : " — " + string.Join(", ", source.TeacherNames);
+
+        Name = $"{scope}: {source.SubjectName}{teachers} ({source.RemainingPeriods} soat)";
+    }
+
+    /// <summary>Dars ta'rifi Id.</summary>
+    public int LessonId { get; }
+
+    /// <summary>Sinf Id (topilmasa 0).</summary>
+    public int ClassId { get; }
+
+    /// <summary>Ko'rinadigan nom.</summary>
+    public string Name { get; }
 }
 
 /// <summary>Jadval to'rining bitta katagi (sarlavha yoki dars katagi).</summary>
@@ -649,10 +875,11 @@ public sealed partial class TimetableCellViewModel : ObservableObject
 {
     private readonly TimetableViewModel _owner;
 
+    /// <summary>Katakdagi kartaning UI identifikatori.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasEntry))]
-    [NotifyPropertyChangedFor(nameof(Background))]
-    private int? _entryId;
+    [NotifyPropertyChangedFor(nameof(State))]
+    private int? _cardId;
 
     [ObservableProperty]
     private string _subjectName = string.Empty;
@@ -666,12 +893,9 @@ public sealed partial class TimetableCellViewModel : ObservableObject
     private string _roomText = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Background))]
     private string _colorCode = "#FFFFFF";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(BorderBrush))]
-    [NotifyPropertyChangedFor(nameof(BorderThickness))]
     private bool _isSelected;
 
     /// <summary>Katakni egasi bilan bog'lab yaratadi.</summary>
@@ -702,7 +926,7 @@ public sealed partial class TimetableCellViewModel : ObservableObject
     public int LessonNumber { get; init; }
 
     /// <summary>Katakda dars bormi.</summary>
-    public bool HasEntry => EntryId.HasValue;
+    public bool HasEntry => CardId.HasValue;
 
     /// <summary>Xona ko'rsatilsinmi.</summary>
     public bool HasRoom => !string.IsNullOrWhiteSpace(RoomText);
@@ -710,18 +934,13 @@ public sealed partial class TimetableCellViewModel : ObservableObject
     /// <summary>Xona matni ("Xona: 12").</summary>
     public string RoomDisplayText => HasRoom ? "Xona: " + RoomText : string.Empty;
 
-    /// <summary>Katak foni (sarlavha — kulrang, dars — o'qituvchi rangining ochiq toni).</summary>
-    public IBrush Background => IsHeader
-        ? HeaderBackground
-        : (HasEntry ? ScheduleColors.Light(ColorCode) : Brushes.White);
-
-    /// <summary>Ramka rangi — tanlangan katakda ko'k.</summary>
-    public IBrush BorderBrush => IsSelected ? ScheduleColors.Selection : ScheduleColors.CellBorder;
-
-    /// <summary>Ramka qalinligi — tanlangan katakda qalinroq.</summary>
-    public Thickness BorderThickness => IsSelected ? new Thickness(3) : new Thickness(1);
-
-    private static readonly IBrush HeaderBackground = new ImmutableSolidColorBrush(Color.Parse("#EDE7F6"));
+    /// <summary>
+    /// Katakning semantik holati. Rang bu yerda emas — uni XAML uslublari va
+    /// konverterlar hal qiladi (M-06).
+    /// </summary>
+    public TimetableCellState State => IsHeader
+        ? TimetableCellState.Header
+        : (HasEntry ? TimetableCellState.Occupied : TimetableCellState.Empty);
 
     /// <summary>Katakni tanlash.</summary>
     [RelayCommand]
@@ -729,5 +948,5 @@ public sealed partial class TimetableCellViewModel : ObservableObject
 
     /// <summary>Katakdagi darsni o'chirish.</summary>
     [RelayCommand]
-    private Task DeleteAsync() => _owner.DeleteEntryAsync(this);
+    private Task DeleteAsync(CancellationToken ct = default) => _owner.DeleteEntryAsync(this, ct);
 }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:v="clr-namespace:DarsJadvali.Desktop.Views"
              x:Class="DarsJadvali.Desktop.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
 
@@ -32,9 +33,14 @@
   </UserControl.Styles>
 
   <UserControl.Resources>
-    <!-- Tekshiruv natijasidagi bitta konflikt -->
+    <!-- Hisobotdagi oddiy matn qatori (xato, tavsiya, tekshiruv izohi) -->
+    <DataTemplate x:Key="TextLineTemplate">
+      <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,3" />
+    </DataTemplate>
+
+    <!-- Tekshiruv natijasidagi bitta konflikt — ranglar konverter orqali (M-06) -->
     <DataTemplate x:Key="ConflictTemplate" x:DataType="vm:ConflictRowViewModel">
-      <Border Background="{Binding BackgroundBrush}"
+      <Border Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}, ConverterParameter=Background}"
               CornerRadius="4"
               Padding="10,7"
               Margin="0,0,0,6">
@@ -42,12 +48,12 @@
           <Border Width="4"
                   CornerRadius="2"
                   Margin="0,0,10,0"
-                  Background="{Binding AccentBrush}" />
+                  Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
           <StackPanel>
             <TextBlock Text="{Binding Code}"
                        FontSize="11"
                        FontWeight="Bold"
-                       Foreground="{Binding AccentBrush}" />
+                       Foreground="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
             <TextBlock Text="{Binding Message}"
                        TextWrapping="Wrap"
                        Margin="0,2,0,0" />
@@ -116,6 +122,40 @@
                      TextWrapping="Wrap"
                      Text="{Binding GeneratorDescription}" />
 
+          <!-- Sozlamalar: takrorlanuvchi natija uchun urug' + qidiruv byudjeti -->
+          <WrapPanel Margin="0,0,0,12">
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Classes="AppHintText" Text="Urug' (seed)" />
+              <NumericUpDown Width="150"
+                             Minimum="0"
+                             Maximum="2147483647"
+                             Increment="1"
+                             FormatString="0"
+                             Value="{Binding Seed, Mode=TwoWay}"
+                             ToolTip.Tip="Bir xil urug' + bir xil ma'lumot → bir xil jadval." />
+            </StackPanel>
+
+            <StackPanel Margin="0,0,16,8">
+              <TextBlock Classes="AppHintText" Text="Qidiruv byudjeti" />
+              <ComboBox Width="200"
+                        ItemsSource="{Binding Complexities}"
+                        SelectedItem="{Binding SelectedComplexity, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ComplexityOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel Margin="0,0,16,8" VerticalAlignment="Bottom">
+              <CheckBox Content="Qulflangan kartalar joyida qolsin"
+                        IsChecked="{Binding KeepLocked, Mode=TwoWay}" />
+              <CheckBox Content="To'liq bo'lmasa ham saqlansin"
+                        IsChecked="{Binding SavePartial, Mode=TwoWay}" />
+            </StackPanel>
+          </WrapPanel>
+
           <WrapPanel>
             <Button Content="Avtomatik tuzish"
                     Command="{Binding GenerateCommand}"
@@ -137,9 +177,17 @@
                     Foreground="{DynamicResource AppErrorBrush}" />
           </WrapPanel>
 
+          <!-- Faza nomi (o'zbekcha) + foiz -->
+          <StackPanel Orientation="Horizontal" Margin="0,14,0,0" IsVisible="{Binding IsGenerating}">
+            <TextBlock Text="{Binding GenerationPhase}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding GenerationPercentText}"
+                       Margin="10,0,0,0"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+          </StackPanel>
+
           <ProgressBar Height="8"
                        Minimum="0"
-                       Margin="0,14,0,0"
+                       Margin="0,6,0,0"
                        Maximum="{Binding GenerationProgressMax}"
                        Value="{Binding GenerationProgressValue, Mode=OneWay}"
                        IsVisible="{Binding IsGenerating}" />
@@ -149,6 +197,86 @@
                      TextWrapping="Wrap"
                      Text="{Binding GenerationMessage}"
                      IsVisible="{Binding HasGenerationMessage}" />
+
+          <!-- ================= Generatsiya hisoboti ================= -->
+          <StackPanel Margin="0,14,0,0" IsVisible="{Binding HasGenerationReport}">
+            <TextBlock Text="{Binding GenerationSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding SoftCostText}"
+                       Margin="0,2,0,0"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+
+            <!-- Generatsiyadan oldingi tekshiruv xatolari ("Xona yetishmaydi") -->
+            <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasVerificationFaults}">
+              <TextBlock Text="Tekshiruv xatolari (generatsiyadan oldin)"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppErrorBrush}" />
+              <ItemsControl ItemsSource="{Binding VerificationFaults}"
+                            ItemTemplate="{StaticResource TextLineTemplate}"
+                            Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- Buzilgan qat'iy (hard) cheklovlar -->
+            <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasHardViolations}">
+              <TextBlock Text="Buzilgan qat'iy cheklovlar"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppErrorBrush}" />
+              <ItemsControl ItemsSource="{Binding HardViolations}"
+                            ItemTemplate="{StaticResource TextLineTemplate}"
+                            Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- Qaysi cheklovni yumshatish kerak -->
+            <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasRelaxationSuggestions}">
+              <TextBlock Text="Qaysi cheklovni yumshatish yordam beradi" FontWeight="SemiBold" />
+              <ItemsControl ItemsSource="{Binding RelaxationSuggestions}"
+                            ItemTemplate="{StaticResource TextLineTemplate}"
+                            Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- Joylashtirilmagan darslarning ANIQ ro'yxati -->
+            <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasUnplacedLessons}">
+              <TextBlock Text="Joylashtirilmagan darslar" FontWeight="SemiBold" />
+              <ItemsControl ItemsSource="{Binding UnplacedLessons}" Margin="0,4,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:UnplacedLessonRowViewModel">
+                    <Border BorderThickness="0,0,0,1"
+                            BorderBrush="{DynamicResource AppBorderBrush}"
+                            Padding="0,5">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding SubjectName}"
+                                   FontWeight="SemiBold"
+                                   Width="170"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Scope}" Width="150" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Teachers}"
+                                   Width="200"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource AppMutedTextBrush}" />
+                        <TextBlock Text="{Binding HoursText}"
+                                   Foreground="{DynamicResource AppErrorBrush}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Jarima taqsimoti -->
+            <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasPenaltyBreakdown}">
+              <TextBlock Text="Jarima taqsimoti" FontWeight="SemiBold" />
+              <ItemsControl ItemsSource="{Binding PenaltyBreakdown}" Margin="0,4,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PenaltyRowViewModel">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                      <TextBlock Text="{Binding ConstraintId}" Width="90" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Name}" Width="320" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding PenaltyText}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
         </StackPanel>
       </Border>
 
@@ -156,10 +284,15 @@
       <Border Classes="panel">
         <StackPanel>
           <TextBlock Classes="AppSectionTitle" Text="Jadvalni tekshirish" />
-          <Button Content="Butun jadvalni tekshirish"
-                  Command="{Binding ValidateAllCommand}"
-                  HorizontalAlignment="Left"
-                  Padding="18,6" />
+          <StackPanel Orientation="Horizontal">
+            <Button Content="Butun jadvalni tekshirish"
+                    Command="{Binding ValidateAllCommand}"
+                    Padding="18,6" />
+            <Button Content="Reja sig'imini tekshirish"
+                    Command="{Binding CheckCapacityCommand}"
+                    Margin="10,0,0,0"
+                    Padding="18,6" />
+          </StackPanel>
 
           <TextBlock Text="{Binding ValidationSummary}"
                      Margin="0,12,0,0"
@@ -167,58 +300,50 @@
                      TextWrapping="Wrap"
                      IsVisible="{Binding HasValidationResult}" />
 
+          <!-- Sig'im: rejalashtirilgan soat vs mavjud slot (aSc "Verify" fazasi) -->
+          <StackPanel Margin="0,12,0,0" IsVisible="{Binding HasCapacityResult}">
+            <TextBlock Text="{Binding CapacitySummary}"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+
+            <ItemsControl ItemsSource="{Binding CapacityWarnings}"
+                          Margin="0,6,0,0"
+                          IsVisible="{Binding HasCapacityWarnings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CapacityWarningRowViewModel">
+                  <Border BorderThickness="0,0,0,1"
+                          BorderBrush="{DynamicResource AppBorderBrush}"
+                          Padding="0,5">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding ScopeText}"
+                                 Width="90"
+                                 Foreground="{DynamicResource AppMutedTextBrush}" />
+                      <TextBlock Text="{Binding Message}"
+                                 TextWrapping="Wrap"
+                                 Foreground="{DynamicResource AppErrorBrush}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
           <ItemsControl ItemsSource="{Binding ValidationConflicts}"
                         ItemTemplate="{StaticResource ConflictTemplate}"
                         Margin="0,10,0,0" />
         </StackPanel>
       </Border>
 
-      <!-- Maktab jadvali -->
+      <!-- Maktab jadvali — aSc uslubidagi tahrirlash yadrosi (M-04 yopildi) -->
       <Border Classes="panel">
         <StackPanel>
-          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,14">
-            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-              <TextBlock Classes="AppSectionTitle" Text="Maktab jadvali" Margin="0" />
-              <TextBlock Classes="AppHintText"
-                         Margin="0,2,0,0"
-                         Text="Faqat ko'rish uchun. Tahrirlash «Dars jadvali» sahifasida bajariladi." />
-            </StackPanel>
-
-            <ComboBox Grid.Column="1"
-                      Width="220"
-                      VerticalAlignment="Center"
-                      ItemsSource="{Binding ClassFilters}"
-                      SelectedItem="{Binding SelectedClassFilter, Mode=TwoWay}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:ClassFilterOption">
-                  <TextBlock Text="{Binding Name}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </Grid>
-
+          <TextBlock Classes="AppSectionTitle" Text="Maktab jadvali" Margin="0" />
           <TextBlock Classes="AppHintText"
-                     FontSize="13"
+                     Margin="0,2,0,14"
                      TextWrapping="Wrap"
-                     Text="{Binding TimetableEmptyMessage}"
-                     IsVisible="{Binding IsTimetableEmpty}" />
+                     Text="Kartani bosing → kerakli katakni bosing. SHIFT — mumkin pozitsiyalar, CTRL — guruhni birga ko'chirish, ESC — bekor qilish, Ctrl+Z / Ctrl+Y — undo/redo, + / − — masshtab." />
 
-          <!-- Butun maktab uchun yagona to'r: sarlavha qatori aylantirilganda joyida qoladi -->
-          <Border BorderBrush="{DynamicResource AppBorderBrush}"
-                  BorderThickness="1"
-                  IsVisible="{Binding !IsTimetableEmpty}">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                          VerticalScrollBarVisibility="Disabled">
-              <StackPanel>
-                <Grid x:Name="TimetableHeaderGrid" />
-                <ScrollViewer MaxHeight="620"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                  <Grid x:Name="TimetableBodyGrid" />
-                </ScrollViewer>
-              </StackPanel>
-            </ScrollViewer>
-          </Border>
+          <v:TimetableBoardView DataContext="{Binding Board}" />
         </StackPanel>
       </Border>
     </StackPanel>

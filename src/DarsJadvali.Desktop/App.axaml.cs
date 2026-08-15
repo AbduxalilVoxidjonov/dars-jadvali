@@ -5,7 +5,9 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Application.DependencyInjection;
+using DarsJadvali.Application.Services;
 using DarsJadvali.Desktop.Services;
+using DarsJadvali.Desktop.Services.Timetable;
 using DarsJadvali.Desktop.ViewModels;
 using DarsJadvali.Desktop.Views;
 using DarsJadvali.Infrastructure.DependencyInjection;
@@ -47,17 +49,34 @@ public partial class App : Avalonia.Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    /// <summary>
+    /// DI konteynerni to'ldiradi. <c>public</c> — sinovlar barcha sahifa ViewModel'i
+    /// haqiqatan yig'ilishini (bog'liqliklari ro'yxatdan o'tganini) tekshira olishi uchun.
+    /// </summary>
+    /// <param name="services">Servislar to'plami.</param>
+    public static void ConfigureServices(IServiceCollection services)
     {
         // Biznes qatlamlari (Scoped)
         services.AddApplication();
         services.AddInfrastructureSqlite(ResolveDbPath());
+
+        // Butun jadvalni qayta yozish / tozalash (ommaviy amal).
+        services.AddScoped<IBoardCardRewriter, BoardCardRewriter>();
+
+        // Sinf smenasi — ISchedulingStore.SetClassShiftAsync ustidagi yupqa servis.
+        services.AddScoped<IClassShiftService, ClassShiftService>();
+
+        // Reja sig'imi (aSc "Verify") — generatsiyadan oldingi ogohlantirish.
+        services.AddScoped<IPlanCapacityService, PlanCapacityService>();
 
         // UI infratuzilmasi
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<INavigationService, NavigationService>();
 
         // Sahifa ViewModel'lari — har navigatsiyada yangi qamrov (scope) ichida yaratiladi
+        // Jadval tahrirlash yadrosi — bosh sahifa ichida yashaydi (bir qamrov, bir DbContext).
+        services.AddTransient<TimetableBoardViewModel>();
+
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<TeachersViewModel>();
         services.AddTransient<SubjectsViewModel>();

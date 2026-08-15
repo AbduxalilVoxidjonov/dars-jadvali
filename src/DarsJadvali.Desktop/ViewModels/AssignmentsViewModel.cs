@@ -20,9 +20,13 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
     private readonly ISubjectService _subjects;
     private readonly IClassGroupService _classGroups;
     private readonly IAssignmentService _assignments;
+    private readonly IPlanCapacityService _capacity;
     private readonly IDialogService _dialogs;
 
     private int _editingId;
+
+    /// <summary>Sahifa yuklanayotgan payt — tanlov o'zgarishi qayta yuklashni ishga tushirmaydi.</summary>
+    private bool _isInitializing;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedTeacherLabel))]
@@ -45,17 +49,31 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
     [ObservableProperty]
     private string _editorTitle = "Yangi biriktirma";
 
+    /// <summary>Sig'im tekshiruvi bajarildimi.</summary>
+    [ObservableProperty]
+    private bool _hasCapacityResult;
+
+    /// <summary>Sig'imdan oshgan sinf/guruh/o'qituvchi bormi.</summary>
+    [ObservableProperty]
+    private bool _hasCapacityWarnings;
+
+    /// <summary>Sig'im tekshiruvining qisqacha xulosasi.</summary>
+    [ObservableProperty]
+    private string _capacitySummary = string.Empty;
+
     public AssignmentsViewModel(
         ITeacherService teachers,
         ISubjectService subjects,
         IClassGroupService classGroups,
         IAssignmentService assignments,
+        IPlanCapacityService capacity,
         IDialogService dialogs)
     {
         _teachers = teachers;
         _subjects = subjects;
         _classGroups = classGroups;
         _assignments = assignments;
+        _capacity = capacity;
         _dialogs = dialogs;
     }
 
@@ -71,8 +89,13 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
     /// <summary>Sinf tanlash ro'yxati.</summary>
     public ObservableCollection<ClassGroup> ClassGroups { get; } = new();
 
-    /// <summary>Amal bajarilmayotgan payt — tugmalar yoqiladi.</summary>
-    public bool IsNotBusy => !IsBusy;
+    /// <summary>
+    /// Sig'im ogohlantirishlari: rejadagi soat mavjud slotlardan oshib ketgan
+    /// sinf / guruh / o'qituvchilar. Reja SHU ekranda tahrirlangani uchun
+    /// ogohlantirish ham shu yerda ko'rinadi (aSc "Verify specification").
+    /// </summary>
+    public ObservableCollection<CapacityWarningRowViewModel> CapacityWarnings { get; } = new();
+
 
     /// <summary>O'qituvchi tanlanganmi (va band emasmi).</summary>
     public bool HasSelectedTeacher => !IsBusy && SelectedTeacher is not null;
@@ -84,11 +107,15 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
     public string SelectedTeacherLabel =>
         SelectedTeacher is null ? "O'qituvchi tanlanmagan" : $"Tanlangan: {SelectedTeacher.FullName}";
 
-    public override async Task LoadAsync(CancellationToken ct = default)
+    public override Task LoadAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(LoadCoreAsync, ct);
+
+    private async Task LoadCoreAsync(CancellationToken ct)
     {
         try
         {
             IsBusy = true;
+            _isInitializing = true;
 
             var teachers = await _teachers.GetAllAsync(ct).ConfigureAwait(true);
             var subjects = await _subjects.GetAllAsync(ct).ConfigureAwait(true);
@@ -114,6 +141,11 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
 
             SelectedTeacher = Teachers.FirstOrDefault();
             StatusMessage = "Biriktirmalar bo'limi.";
+
+            _isInitializing = false;
+
+            // Qayta yuklash setter orqali emas, shu yerda — navbat ichida ketma-ket bajariladi.
+            await ReloadRowsCoreAsync(ct).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -126,6 +158,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         }
         finally
         {
+            _isInitializing = false;
             IsBusy = false;
         }
     }
@@ -136,7 +169,6 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
 
         if (e.PropertyName == nameof(IsBusy))
         {
-            OnPropertyChanged(nameof(IsNotBusy));
             OnPropertyChanged(nameof(HasSelectedTeacher));
             OnPropertyChanged(nameof(HasSelectedRow));
         }
@@ -145,11 +177,70 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
     partial void OnSelectedTeacherChanged(Teacher? value)
     {
         ResetEditor();
-        _ = ReloadRowsAsync();
+
+        if (_isInitializing)
+        {
+            return;
+        }
+
+        // Setterdan `await` qilib bo'lmaydi — amal navbatga qo'yiladi (M-01).
+        _ = RunExclusiveAsync(ReloadRowsCoreAsync);
     }
 
-    [RelayCommand]
-    private async Task ReloadRowsAsync()
+    /// <summary>Tanlangan o'qituvchining biriktirmalarini qayta o'qiydi.</summary>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task ReloadRowsAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(ReloadRowsCoreAsync, ct);
+
+    /// <summary>
+    /// Rejani sig'im bo'yicha tekshiradi: "rejalashtirilgan soat" va "mavjud slot".
+    /// </summary>
+    /// <remarks>
+    /// Reja shu ekranda tahrirlanadi, shuning uchun sig'imdan oshib ketganini
+    /// foydalanuvchi generatsiyani kutmasdan shu yerda ko'radi.
+    /// </remarks>
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
+    private Task CheckCapacityAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(CheckCapacityCoreAsync, ct);
+
+    private async Task CheckCapacityCoreAsync(CancellationToken ct)
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "Reja sig'imi tekshirilmoqda...";
+
+            var report = await _capacity.CheckAsync(null, ct).ConfigureAwait(true);
+
+            CapacityWarnings.Clear();
+            foreach (var warning in report.Warnings)
+            {
+                CapacityWarnings.Add(new CapacityWarningRowViewModel(warning));
+            }
+
+            HasCapacityWarnings = CapacityWarnings.Count > 0;
+            HasCapacityResult = true;
+            CapacitySummary = report.Summary;
+            StatusMessage = report.Summary;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Bekor qilindi.";
+        }
+        catch (Exception ex)
+        {
+            CapacitySummary = "Sig'imni tekshirib bo'lmadi.";
+            HasCapacityResult = true;
+            await _dialogs.ErrorAsync("Reja sig'imini tekshirishda xatolik yuz berdi.\n\n" + ex.Message)
+                .ConfigureAwait(true);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ReloadRowsCoreAsync(CancellationToken ct)
     {
         Rows.Clear();
         SelectedRow = null;
@@ -162,7 +253,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         try
         {
             IsBusy = true;
-            var items = await _assignments.GetByTeacherAsync(SelectedTeacher.Id).ConfigureAwait(true);
+            var items = await _assignments.GetByTeacherAsync(SelectedTeacher.Id, ct).ConfigureAwait(true);
 
             foreach (var item in items
                          .OrderBy(a => a.ClassGroup?.Name, StringComparer.CurrentCulture)
@@ -173,10 +264,14 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
 
             foreach (var row in Rows)
             {
-                await LoadSummaryAsync(row).ConfigureAwait(true);
+                await LoadSummaryAsync(row, ct).ConfigureAwait(true);
             }
 
             StatusMessage = $"{SelectedTeacher.FullName}: {Rows.Count} ta biriktirma.";
+        }
+        catch (OperationCanceledException)
+        {
+            // Boshqa o'qituvchi tanlandi — bu natija kerak emas.
         }
         catch (Exception ex)
         {
@@ -189,15 +284,19 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         }
     }
 
-    private async Task LoadSummaryAsync(AssignmentRowViewModel row)
+    private async Task LoadSummaryAsync(AssignmentRowViewModel row, CancellationToken ct = default)
     {
         try
         {
-            var summary = await _assignments.GetHoursSummaryAsync(row.Id).ConfigureAwait(true);
+            var summary = await _assignments.GetHoursSummaryAsync(row.Id, ct).ConfigureAwait(true);
             row.WeeklyHours = summary.Weekly;
             row.PlacedHours = summary.Placed;
             row.HoursSummary = $"{summary.Weekly} dan {summary.Placed} tasi qo'yilgan" +
                                (summary.Remaining > 0 ? $" ({summary.Remaining} ta qoldi)" : " (to'liq)");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception)
         {
@@ -205,7 +304,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task NewAsync()
     {
         if (SelectedTeacher is null)
@@ -217,7 +316,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         ResetEditor();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task EditAsync(AssignmentRowViewModel? row)
     {
         var target = row ?? SelectedRow;
@@ -249,7 +348,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         EditWeeklyHours = "1";
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task SaveAsync(CancellationToken ct = default)
     {
         if (SelectedTeacher is null)
@@ -352,7 +451,7 @@ public sealed partial class AssignmentsViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DeleteAsync(AssignmentRowViewModel? row)
     {
         var target = row ?? SelectedRow;

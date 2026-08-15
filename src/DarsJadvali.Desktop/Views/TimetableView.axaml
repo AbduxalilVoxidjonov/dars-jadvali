@@ -12,18 +12,50 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="8" />
     </Style>
+
+    <!--
+      Katak ranglari endi ViewModel'da emas, shu yerda (M-06).
+      ViewModel faqat semantik holat beradi: Header / Empty / Occupied / Warning / Conflict.
+    -->
+    <Style Selector="Border.cell">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <Style Selector="Border.cell.header">
+      <Setter Property="Background" Value="{DynamicResource AppHeaderBrush}" />
+    </Style>
+
+    <Style Selector="Border.cell.warning">
+      <Setter Property="BorderBrush" Value="{DynamicResource AppWarningBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <Style Selector="Border.cell.conflict">
+      <Setter Property="BorderBrush" Value="{DynamicResource AppErrorBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Tanlov eng ustun ko'rinish — oxirida turadi. -->
+    <Style Selector="Border.cell.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource AppSelectionBrush}" />
+      <Setter Property="BorderThickness" Value="3" />
+    </Style>
   </UserControl.Styles>
 
   <UserControl.Resources>
     <!-- Jadval to'rining bitta katagi -->
     <DataTemplate x:Key="TimetableCellTemplate" x:DataType="vm:TimetableCellViewModel">
-      <Border Margin="2"
+      <Border Classes="cell"
+              Classes.header="{Binding State, Converter={StaticResource EnumToBoolean}, ConverterParameter=Header}"
+              Classes.warning="{Binding State, Converter={StaticResource EnumToBoolean}, ConverterParameter=Warning}"
+              Classes.conflict="{Binding State, Converter={StaticResource EnumToBoolean}, ConverterParameter=Conflict}"
+              Classes.selected="{Binding IsSelected}"
+              Margin="2"
               MinHeight="66"
               CornerRadius="5"
-              Padding="6"
-              Background="{Binding Background}"
-              BorderBrush="{Binding BorderBrush}"
-              BorderThickness="{Binding BorderThickness}"
+              ClipToBounds="True"
               PointerPressed="OnCellPointerPressed">
 
         <Border.ContextFlyout>
@@ -35,9 +67,15 @@
         </Border.ContextFlyout>
 
         <Panel>
+          <!-- Band katakning foni — o'qituvchi rangining ochiq toni (konverter orqali) -->
+          <Border CornerRadius="5"
+                  IsVisible="{Binding State, Converter={StaticResource EnumToBoolean}, ConverterParameter=Occupied}"
+                  Background="{Binding ColorCode, Converter={StaticResource ColorCodeToBrush}, ConverterParameter=Light}" />
+
           <!-- Sarlavha katagi -->
           <StackPanel VerticalAlignment="Center"
                       HorizontalAlignment="Center"
+                      Margin="6"
                       IsVisible="{Binding IsHeader}">
             <TextBlock Text="{Binding HeaderText}"
                        FontWeight="SemiBold"
@@ -51,7 +89,7 @@
           </StackPanel>
 
           <!-- Dars katagi -->
-          <StackPanel VerticalAlignment="Center" IsVisible="{Binding IsLessonCell}">
+          <StackPanel VerticalAlignment="Center" Margin="6" IsVisible="{Binding IsLessonCell}">
             <TextBlock Text="{Binding SubjectName}"
                        FontWeight="SemiBold"
                        FontSize="13"
@@ -70,9 +108,9 @@
       </Border>
     </DataTemplate>
 
-    <!-- Konflikt qatori -->
+    <!-- Konflikt qatori — ranglar konverter orqali (M-06) -->
     <DataTemplate x:Key="ConflictTemplate" x:DataType="vm:ConflictRowViewModel">
-      <Border Background="{Binding BackgroundBrush}"
+      <Border Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}, ConverterParameter=Background}"
               CornerRadius="4"
               Padding="8,6"
               Margin="0,0,0,6">
@@ -80,11 +118,11 @@
           <Border Width="4"
                   CornerRadius="2"
                   Margin="0,0,8,0"
-                  Background="{Binding AccentBrush}" />
+                  Background="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
           <TextBlock Text="{Binding Message}"
                      TextWrapping="Wrap"
                      MaxWidth="260"
-                     Foreground="{Binding AccentBrush}" />
+                     Foreground="{Binding Severity, Converter={StaticResource ConflictSeverityToBrush}}" />
         </StackPanel>
       </Border>
     </DataTemplate>
@@ -120,7 +158,7 @@
                   VerticalAlignment="Center"
                   IsVisible="{Binding IsClassMode}">
           <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="entities:ClassGroup">
+            <DataTemplate x:DataType="entities:SchoolClass">
               <TextBlock Text="{Binding Name}" />
             </DataTemplate>
           </ComboBox.ItemTemplate>
@@ -195,40 +233,37 @@
                     HorizontalAlignment="Stretch"
                     Margin="0,2,0,12">
             <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="entities:ClassGroup">
+              <DataTemplate x:DataType="entities:SchoolClass">
                 <TextBlock Text="{Binding Name}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <TextBlock Classes="AppHintText" Text="Fan" />
-          <ComboBox ItemsSource="{Binding Subjects}"
-                    SelectedItem="{Binding PlaceSubject, Mode=TwoWay}"
+          <!--
+            Fan + o'qituvchi o'rniga REJADAGI dars tanlanadi: yangi modelda kartochka
+            har doim mavjud Lesson ga tegishli bo'ladi. Ro'yxatda faqat hali
+            joylashtirilmagan soatlar ko'rinadi (GetUnplacedAsync ning aniq natijasi).
+          -->
+          <TextBlock Classes="AppHintText" Text="Joylashtirilmagan dars" />
+          <ComboBox ItemsSource="{Binding VisiblePlaceLessons}"
+                    SelectedItem="{Binding PlaceLesson, Mode=TwoWay}"
                     HorizontalAlignment="Stretch"
                     Margin="0,2,0,12">
             <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="entities:Subject">
+              <DataTemplate x:DataType="vm:UnplacedLessonOption">
                 <TextBlock Text="{Binding Name}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <TextBlock Classes="AppHintText" Text="O'qituvchi" />
-          <ComboBox ItemsSource="{Binding Teachers}"
-                    SelectedItem="{Binding PlaceTeacher, Mode=TwoWay}"
-                    HorizontalAlignment="Stretch"
-                    Margin="0,2,0,12">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="entities:Teacher">
-                <TextBlock Text="{Binding FullName}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-
-          <TextBlock Classes="AppHintText" Text="Xona (ixtiyoriy)" />
-          <TextBox Text="{Binding PlaceRoom, Mode=TwoWay}"
-                   Watermark="Masalan: 12"
-                   Margin="0,2,0,14" />
+          <!--
+            Xona kartochkaga dars ta'rifidagi xona ro'yxatidan (yoki sinfning asosiy
+            xonasidan) tayinlanadi — bu yerda qo'lda kiritilmaydi.
+          -->
+          <TextBlock Classes="AppHintText"
+                     TextWrapping="Wrap"
+                     Margin="0,0,0,14"
+                     Text="Xona sinfning asosiy xonasidan olinadi." />
 
           <StackPanel Orientation="Horizontal">
             <Button Content="Qo'yish"

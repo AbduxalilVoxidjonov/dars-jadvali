@@ -18,6 +18,8 @@
     <ProjectReference Include="..\..\src\DarsJadvali.Domain\DarsJadvali.Domain.csproj" />
     <ProjectReference Include="..\..\src\DarsJadvali.Application\DarsJadvali.Application.csproj" />
     <ProjectReference Include="..\..\src\DarsJadvali.Infrastructure\DarsJadvali.Infrastructure.csproj" />
+    <!-- Desktop qatlamining UI'siz mantiqi (navbat, havola oq ro'yxati, IsBusy gating) uchun -->
+    <ProjectReference Include="..\..\src\DarsJadvali.Desktop\DarsJadvali.Desktop.csproj" />
   </ItemGroup>
 
 </Project>

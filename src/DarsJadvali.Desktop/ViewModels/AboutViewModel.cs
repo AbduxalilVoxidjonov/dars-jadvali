@@ -22,6 +22,7 @@ public sealed partial class AboutViewModel : ViewModelBase
 
     /// <summary>Tekshiruv davom etyaptimi.</summary>
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckUpdateCommand))]
     private bool _isCheckingUpdate;
 
     /// <summary>Yangilanish haqidagi xabar.</summary>
@@ -95,18 +96,24 @@ public sealed partial class AboutViewModel : ViewModelBase
         StatusMessage = AppInfo.AppName + " — " + VersionText;
 
         // Tarmoq so'rovi sahifa ochilishini kechiktirmasligi kerak — fon rejimida ketadi.
-        _ = CheckUpdateCommand.ExecuteAsync(null);
+        // Navbat orqali: sahifadan chiqilganda so'rov bekor qilinadi (M-11).
+        _ = RunExclusiveAsync(CheckUpdateCoreAsync);
 
         return Task.CompletedTask;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task OpenTelegramAsync()
         => await OpenUrlAsync(AppInfo.TelegramUrl);
 
     /// <summary>Yangilanishni tekshiradi. Xato bo'lsa ham dialog ochilmaydi.</summary>
-    [RelayCommand]
-    private async Task CheckUpdateAsync()
+    [RelayCommand(CanExecute = nameof(CanCheckUpdate))]
+    private Task CheckUpdateAsync(CancellationToken ct = default)
+        => RunExclusiveAsync(CheckUpdateCoreAsync, ct);
+
+    private bool CanCheckUpdate() => !IsCheckingUpdate;
+
+    private async Task CheckUpdateCoreAsync(CancellationToken ct)
     {
         IsCheckingUpdate = true;
         HasUpdate = false;
@@ -118,7 +125,7 @@ public sealed partial class AboutViewModel : ViewModelBase
 
         try
         {
-            var result = await _updateChecker.CheckAsync();
+            var result = await _updateChecker.CheckAsync(ct).ConfigureAwait(true);
 
             UpdateMessage = result.Message;
             _releaseUrl = result.ReleaseUrl;
@@ -159,13 +166,25 @@ public sealed partial class AboutViewModel : ViewModelBase
     }
 
     /// <summary>Reliz sahifasini brauzerda ochadi.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task DownloadUpdateAsync()
         => await OpenUrlAsync(string.IsNullOrWhiteSpace(_releaseUrl) ? AppInfo.ReleasesUrl : _releaseUrl);
 
     /// <summary>Havolani tizim brauzerida ochadi (macOS/Windows/Linux).</summary>
+    /// <remarks>
+    /// <c>UseShellExecute = true</c> manzilni operatsion tizimga uzatadi. Manzil tarmoqdan
+    /// kelgan bo'lishi mumkin (GitHub reliz javobi), shuning uchun avval oq ro'yxatdan
+    /// o'tkaziladi (U-01). Infrastructure qatlamida ham alohida tekshiruv bor.
+    /// </remarks>
     private async Task OpenUrlAsync(string url)
     {
+        if (!ExternalUrlPolicy.IsAllowed(url))
+        {
+            StatusMessage = "Havola ochilmadi — manzil ishonchsiz.";
+            await _dialogs.ErrorAsync(ExternalUrlPolicy.RejectionMessage(url));
+            return;
+        }
+
         try
         {
             Process.Start(new ProcessStartInfo(url)
@@ -180,7 +199,7 @@ public sealed partial class AboutViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(IsNotBusy))]
     private async Task CopyCardNumberAsync()
     {
         try

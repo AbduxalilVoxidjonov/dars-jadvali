@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DarsJadvali.Application.Services;
@@ -74,8 +73,6 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>Tanlangan o'quv yili ichidagi dars jadvallari.</summary>
     public ObservableCollection<Schedule> Schedules { get; } = new();
 
-    /// <summary>Amal bajarilmayotgan payt — tanlagichlar yoqiladi.</summary>
-    public bool IsNotBusy => !IsBusy;
 
     /// <summary>Sarlavhada ko'rsatiladigan dastur nomi.</summary>
     public string AppTitle => AppInfo.AppName;
@@ -172,16 +169,6 @@ public sealed partial class MainViewModel : ViewModelBase
         }
     }
 
-    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
-    {
-        base.OnPropertyChanged(e);
-
-        if (e.PropertyName == nameof(IsBusy))
-        {
-            OnPropertyChanged(nameof(IsNotBusy));
-        }
-    }
-
     partial void OnSelectedMenuItemChanged(MenuItemModel? value)
     {
         if (value is null)
@@ -189,6 +176,7 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // Xossa setteridan `await` qilib bo'lmaydi; amallar navbat orqali ketma-ket bajariladi.
         _ = NavigateAsync(value);
     }
 
@@ -199,7 +187,7 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
-        _ = SwitchAcademicYearAsync(value.Id);
+        _ = RunExclusiveAsync(ct => SwitchAcademicYearAsync(value.Id, ct));
     }
 
     partial void OnSelectedScheduleChanged(Schedule? value)
@@ -209,11 +197,11 @@ public sealed partial class MainViewModel : ViewModelBase
             return;
         }
 
-        _ = ActivateScheduleAsync(value);
+        _ = RunExclusiveAsync(ct => ActivateScheduleAsync(value, ct));
     }
 
     /// <summary>O'quv yili almashdi: jadvallar ro'yxati yangilanadi va birinchisi tanlanadi.</summary>
-    private async Task SwitchAcademicYearAsync(int academicYearId)
+    private async Task SwitchAcademicYearAsync(int academicYearId, CancellationToken ct = default)
     {
         IReadOnlyList<Schedule> schedules;
 
@@ -222,7 +210,11 @@ public sealed partial class MainViewModel : ViewModelBase
             IsBusy = true;
             using var scope = _scopes.CreateScope();
             var setService = scope.ServiceProvider.GetRequiredService<IScheduleSetService>();
-            schedules = await setService.GetByAcademicYearAsync(academicYearId).ConfigureAwait(true);
+            schedules = await setService.GetByAcademicYearAsync(academicYearId, ct).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -263,14 +255,18 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>Tanlangan jadvalni faol qiladi va ochiq turgan sahifani qayta yuklaydi.</summary>
-    private async Task ActivateScheduleAsync(Schedule schedule)
+    private async Task ActivateScheduleAsync(Schedule schedule, CancellationToken ct = default)
     {
         try
         {
             IsBusy = true;
             using var scope = _scopes.CreateScope();
             var setService = scope.ServiceProvider.GetRequiredService<IScheduleSetService>();
-            await setService.SetActiveAsync(schedule.Id).ConfigureAwait(true);
+            await setService.SetActiveAsync(schedule.Id, ct).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -284,26 +280,42 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // Ochiq sahifa endi boshqa jadval ma'lumotini ko'rsatishi kerak.
+        // Biz allaqachon navbat ichidamiz — NavigateAsync shu tokendan foydalanadi.
         await NavigateAsync(SelectedMenuItem).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Sahifaga o'tadi. Amallar navbati (<see cref="ViewModelBase.Operations"/>) tufayli
+    /// tez-tez bosilgan navigatsiyalar kesishmaydi: oldingisi bekor qilinadi va tugashi kutiladi (M-03).
+    /// </summary>
     [RelayCommand]
-    private async Task NavigateAsync(MenuItemModel? item)
-    {
-        if (item is null)
-        {
-            return;
-        }
+    private Task NavigateAsync(MenuItemModel? item)
+        => item is null ? Task.CompletedTask : RunExclusiveAsync(ct => NavigateCoreAsync(item, ct));
 
+    private async Task NavigateCoreAsync(MenuItemModel item, CancellationToken ct)
+    {
         try
         {
             IsBusy = true;
             StatusMessage = item.Title + " yuklanmoqda...";
 
+            // MUHIM: eski sahifaning ishi to'xtatilib, tugagunicha kutiladi —
+            // aks holda NavigationService uning DI qamrovini yopganda ObjectDisposedException bo'ladi.
+            if (_navigation.Current is ViewModelBase previous)
+            {
+                await previous.CancelPendingWorkAsync(CancellationToken.None).ConfigureAwait(true);
+            }
+
+            ct.ThrowIfCancellationRequested();
+
             var viewModel = _navigation.NavigateToType(item.ViewModelType);
-            await viewModel.LoadAsync().ConfigureAwait(true);
+            await viewModel.LoadAsync(ct).ConfigureAwait(true);
 
             StatusMessage = item.Title;
+        }
+        catch (OperationCanceledException)
+        {
+            // Boshqa sahifaga o'tildi — e'tiborsiz.
         }
         catch (Exception ex)
         {
