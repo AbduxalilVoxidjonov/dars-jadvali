@@ -1,0 +1,129 @@
+{
+  "key": "sinf-blank",
+  "name": "Sinf blanki — Rasmiy",
+  "description": "Ichki hujjat uslubidagi sinf blanki: chapda jadval, o'ngda darslar ro'yxati (fan/guruh/o'qituvchi/soat), pastda imzo joylari. aSc 'internal_table' ning sinf varianti.",
+  "scope": "class",
+
+  "page": { "size": "A4", "orientation": "portrait", "marginMm": 14 },
+
+  "theme": {
+    "accent": "#000000",
+    "headerBackground": "#E0E0E0",
+    "headerForeground": "#000000",
+    "cardBackground": "#FFFFFF",
+    "cardForeground": "#000000",
+    "emptyBackground": "#FFFFFF",
+    "gridLine": "#000000",
+    "muted": "#555555"
+  },
+
+  "elements": [
+    {
+      "type": "text",
+      "rect": [0, 0, 1, 0.030],
+      "text": "{School.Name}",
+      "fontRatio": 0.016,
+      "align": "left",
+      "color": "#000000"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.032, 1, 0.070],
+      "text": "Dars jadvali: {Class.Name}",
+      "fontRatio": 0.024,
+      "bold": true,
+      "align": "center",
+      "color": "#000000"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.072, 1, 0.098],
+      "text": "O'quv yili: {AcademicYear} · {Term}",
+      "fontRatio": 0.013,
+      "align": "center",
+      "color": "#555555"
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.104, 1, 0.105],
+      "thickness": 1.0,
+      "color": "#000000"
+    },
+    {
+      "type": "timetable",
+      "rect": [0, 0.120, 0.64, 0.760],
+      "axis": "days-as-columns",
+      "showTime": true,
+      "showTeacher": true,
+      "showRoom": false,
+      "showGroup": true,
+      "showWeeks": true,
+      "showShift": true,
+      "useShortSubject": true,
+      "headerFontRatio": 0.0125,
+      "cellFontRatio": 0.0105,
+      "colorBy": "none",
+      "sectionsPerPage": 1
+    },
+    {
+      "type": "box",
+      "rect": [0.66, 0.120, 1, 0.760],
+      "thickness": 0.6,
+      "color": "#000000"
+    },
+    {
+      "type": "legend",
+      "rect": [0.675, 0.130, 0.99, 0.750],
+      "legend": "lessons",
+      "title": "Haftalik darslar",
+      "columns": 1,
+      "fontRatio": 0.0105,
+      "showColors": false,
+      "maxItems": 40
+    },
+    {
+      "type": "line",
+      "rect": [0.06, 0.870, 0.42, 0.871],
+      "thickness": 0.6,
+      "color": "#000000"
+    },
+    {
+      "type": "text",
+      "rect": [0.06, 0.875, 0.42, 0.905],
+      "text": "Sinf rahbari",
+      "fontRatio": 0.012,
+      "align": "center",
+      "color": "#000000"
+    },
+    {
+      "type": "line",
+      "rect": [0.58, 0.870, 0.94, 0.871],
+      "thickness": 0.6,
+      "color": "#000000"
+    },
+    {
+      "type": "text",
+      "rect": [0.58, 0.875, 0.94, 0.905],
+      "text": "Maktab direktori",
+      "fontRatio": 0.012,
+      "align": "center",
+      "color": "#000000"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.960, 0.5, 1.0],
+      "text": "{App.Name} · {Date}",
+      "fontRatio": 0.010,
+      "align": "left",
+      "color": "#555555"
+    },
+    {
+      "type": "text",
+      "rect": [0.5, 0.960, 1.0, 1.0],
+      "text": "{Page} / {PageCount}",
+      "fontRatio": 0.010,
+      "align": "right",
+      "color": "#555555"
+    }
+  ]
+}

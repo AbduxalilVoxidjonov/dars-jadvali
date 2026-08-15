@@ -1,0 +1,101 @@
+{
+  "key": "sinf-kok",
+  "name": "Sinf jadvali — Ko'k",
+  "description": "Bitta sinfning haftalik jadvali: kunlar ustunda, soatlar qatorda, pastda fanlar legendasi. aSc 'Sample Blue' ning ekvivalenti.",
+  "scope": "class",
+
+  "page": { "size": "A4", "orientation": "landscape", "marginMm": 12 },
+
+  "theme": {
+    "accent": "#1E5AA8",
+    "headerBackground": "#1E5AA8",
+    "headerForeground": "#FFFFFF",
+    "cardBackground": "#DCE8F7",
+    "cardForeground": "#102A43",
+    "emptyBackground": "#FFFFFF",
+    "gridLine": "#7A93B8",
+    "muted": "#54687F"
+  },
+
+  "elements": [
+    {
+      "type": "text",
+      "rect": [0, 0, 1, 0.055],
+      "text": "{School.Name}",
+      "fontRatio": 0.030,
+      "bold": true,
+      "align": "center",
+      "color": "#1E5AA8"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.055, 1, 0.095],
+      "text": "{Scope.Title}",
+      "fontRatio": 0.022,
+      "bold": true,
+      "align": "center",
+      "color": "#102A43"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.095, 1, 0.125],
+      "text": "{AcademicYear} · {Term}",
+      "fontRatio": 0.015,
+      "align": "center",
+      "color": "#54687F"
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.130, 1, 0.132],
+      "thickness": 1.2,
+      "color": "#1E5AA8"
+    },
+    {
+      "type": "timetable",
+      "rect": [0, 0.145, 1, 0.775],
+      "axis": "days-as-columns",
+      "showTime": true,
+      "showTeacher": true,
+      "showRoom": true,
+      "showGroup": true,
+      "showWeeks": true,
+      "showShift": true,
+      "headerFontRatio": 0.017,
+      "cellFontRatio": 0.0145,
+      "colorBy": "card",
+      "sectionsPerPage": 1
+    },
+    {
+      "type": "legend",
+      "rect": [0, 0.800, 1, 0.945],
+      "legend": "subjects",
+      "title": "Fanlar",
+      "columns": 3,
+      "fontRatio": 0.0125,
+      "showColors": true,
+      "maxItems": 30
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.955, 1, 0.956],
+      "thickness": 0.5,
+      "color": "#7A93B8"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.962, 0.5, 1.0],
+      "text": "{App.Name} · {Date}",
+      "fontRatio": 0.011,
+      "align": "left",
+      "color": "#54687F"
+    },
+    {
+      "type": "text",
+      "rect": [0.5, 0.962, 1.0, 1.0],
+      "text": "{Page} / {PageCount}",
+      "fontRatio": 0.011,
+      "align": "right",
+      "color": "#54687F"
+    }
+  ]
+}

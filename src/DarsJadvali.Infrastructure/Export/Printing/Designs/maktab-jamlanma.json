@@ -1,0 +1,79 @@
+{
+  "key": "maktab-jamlanma",
+  "name": "Maktab jamlanmasi — Ixcham",
+  "description": "Barcha sinflar bitta varaqda: har sinf uchun alohida ixcham to'r, kunlar QATORDA, soatlar ustunda. A3 ko'ndalang, sahifasiga 4 sinf. aSc 'internal_table' ning ekvivalenti.",
+  "scope": "school",
+
+  "page": { "size": "A3", "orientation": "landscape", "marginMm": 10 },
+
+  "theme": {
+    "accent": "#37474F",
+    "headerBackground": "#37474F",
+    "headerForeground": "#FFFFFF",
+    "cardBackground": "#ECEFF1",
+    "cardForeground": "#1C2A32",
+    "emptyBackground": "#FFFFFF",
+    "gridLine": "#90A4AE",
+    "muted": "#546E7A"
+  },
+
+  "elements": [
+    {
+      "type": "text",
+      "rect": [0, 0, 0.7, 0.040],
+      "text": "{School.Name} — umumiy dars jadvali",
+      "fontRatio": 0.020,
+      "bold": true,
+      "align": "left",
+      "color": "#37474F"
+    },
+    {
+      "type": "text",
+      "rect": [0.7, 0, 1, 0.040],
+      "text": "{AcademicYear} · {Term}",
+      "fontRatio": 0.014,
+      "align": "right",
+      "color": "#546E7A"
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.045, 1, 0.046],
+      "thickness": 1.0,
+      "color": "#37474F"
+    },
+    {
+      "type": "timetable",
+      "rect": [0, 0.058, 1, 0.955],
+      "axis": "days-as-rows",
+      "showTime": false,
+      "showTeacher": false,
+      "showRoom": true,
+      "showGroup": true,
+      "showWeeks": true,
+      "showShift": true,
+      "useShortSubject": true,
+      "showSectionCaption": true,
+      "headerFontRatio": 0.0105,
+      "cellFontRatio": 0.0090,
+      "captionFontRatio": 0.0135,
+      "colorBy": "subject",
+      "sectionsPerPage": 4
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.965, 0.5, 1.0],
+      "text": "{App.Name} · {Date}",
+      "fontRatio": 0.0095,
+      "align": "left",
+      "color": "#546E7A"
+    },
+    {
+      "type": "text",
+      "rect": [0.5, 0.965, 1.0, 1.0],
+      "text": "{Page} / {PageCount}",
+      "fontRatio": 0.0095,
+      "align": "right",
+      "color": "#546E7A"
+    }
+  ]
+}

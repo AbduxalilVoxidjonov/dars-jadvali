@@ -1,12 +1,19 @@
 using DarsJadvali.Application.Abstractions;
+using DarsJadvali.Application.Board;
 using DarsJadvali.Application.Export;
+using DarsJadvali.Application.Services;
 using DarsJadvali.Infrastructure.Export;
+using DarsJadvali.Infrastructure.Export.Printing;
 using DarsJadvali.Infrastructure.Persistence;
+using DarsJadvali.Infrastructure.Persistence.Projection;
 using DarsJadvali.Infrastructure.Persistence.Repositories;
+using DarsJadvali.Infrastructure.Persistence.Scheduling;
 using DarsJadvali.Infrastructure.Update;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DarsJadvali.Infrastructure.DependencyInjection;
 
@@ -36,16 +43,49 @@ public static class InfrastructureServiceRegistration
     /// <summary>SQLite ulanish satri bilan ro'yxatdan o'tkazish.</summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString),
+        // Har bir ochilgan ulanishga WAL / busy_timeout / foreign_keys qo'yiladi:
+        // Web va Desktop AYNI faylni bir vaqtda ochganda "database is locked" chiqmasligi uchun.
+        services.TryAddSingleton<SqlitePragmaInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) => options
+                .UseSqlite(connectionString)
+                .AddInterceptors(sp.GetRequiredService<SqlitePragmaInterceptor>()),
             contextLifetime: ServiceLifetime.Scoped,
             optionsLifetime: ServiceLifetime.Scoped);
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        // Migratsiya oldidan avtomatik zaxira (VACUUM INTO) — 00 §4.4.
+        services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
         services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
 
+        services.AddSchedulingPersistence();
         services.AddExportServices();
         services.AddUpdateChecker();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Kartochka (v2) generatsiyasining ma'lumot qatlami: bandlik projektori va
+    /// qamrovi aniq o'qish/yozish servisi. <c>AddApplication()</c> bilan birga ishlaydi.
+    /// </summary>
+    public static IServiceCollection AddSchedulingPersistence(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddScoped<CardOccurrenceProjector>();
+
+        // Bitta nusxa — ikkala kontrakt uchun: yangi (Application) va eski (Infrastructure) nom.
+        services.TryAddScoped<Application.Abstractions.ICardOccurrenceProjector>(
+            sp => sp.GetRequiredService<CardOccurrenceProjector>());
+        services.TryAddScoped<Persistence.Projection.ICardOccurrenceProjector>(
+            sp => sp.GetRequiredService<CardOccurrenceProjector>());
+        services.TryAddScoped<ISchedulingStore, EfSchedulingStore>();
+
+        // Jadval varianti nusxalanganda kartochkalar ham ko'chsin (ScheduleSetService
+        // buni IXTIYORIY bog'liqlik sifatida oladi — ro'yxatdan o'tmasa eski xatti-harakat).
+        services.TryAddScoped<IScheduleCardCopier, ScheduleCardCopier>();
 
         return services;
     }
@@ -62,14 +102,32 @@ public static class InfrastructureServiceRegistration
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IUpdateChecker>(_ =>
-            new GitHubUpdateChecker(GitHubUpdateChecker.CreateHttpClient()));
+        // Jurnal majburiy: ishonchsiz manzil rad etilganda sabab yozilishi kerak.
+        services.AddLogging();
+
+        services.TryAddSingleton<IUpdateChecker>(sp =>
+            new GitHubUpdateChecker(
+                GitHubUpdateChecker.CreateHttpClient(),
+                sp.GetRequiredService<ILogger<GitHubUpdateChecker>>()));
 
         return services;
     }
 
     /// <summary>Baza fayli yo'li bilan ro'yxatdan o'tkazish — papkani ham yaratadi.</summary>
     public static IServiceCollection AddInfrastructureSqlite(this IServiceCollection services, string dbFilePath)
+        => services.AddInfrastructure(BuildSqliteConnectionString(dbFilePath));
+
+    /// <summary>
+    /// Baza fayli yo'lidan ulanish satrini quradi va papkani yaratadi.
+    /// Yo'l bo'sh bo'lsa <see cref="DefaultDbPath"/> ishlatiladi.
+    /// <para>
+    /// Satr QO'LDA yopishtirilmaydi — <see cref="SqliteConnectionStringBuilder"/> ishlatiladi:
+    /// yo'lda nuqta-vergul yoki tirnoq bo'lsa ham satr buzilmaydi. <c>Foreign Keys=True</c>
+    /// shu yerda qo'yiladi (ulanish darajasidagi kafolat), qolgan PRAGMA'lar esa
+    /// <see cref="SqlitePragmaInterceptor"/> orqali.
+    /// </para>
+    /// </summary>
+    public static string BuildSqliteConnectionString(string? dbFilePath)
     {
         if (string.IsNullOrWhiteSpace(dbFilePath))
             dbFilePath = DefaultDbPath;
@@ -79,7 +137,15 @@ public static class InfrastructureServiceRegistration
         if (!string.IsNullOrEmpty(folder))
             Directory.CreateDirectory(folder);
 
-        return services.AddInfrastructure($"Data Source={fullPath}");
+        var builder = new SqliteConnectionStringBuilder
+        {
+            DataSource = fullPath,
+            ForeignKeys = true,
+            // Buyruq kutish vaqti (soniya) — PRAGMA busy_timeout bilan bir xil byudjet.
+            DefaultTimeout = SqlitePragmaInterceptor.BusyTimeoutMilliseconds / 1000,
+        };
+
+        return builder.ToString();
     }
 
     /// <summary>
@@ -92,7 +158,19 @@ public static class InfrastructureServiceRegistration
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddScoped<ITimetableExportModelBuilder, TimetableExportModelBuilder>();
-        services.TryAddScoped<ISchoolTimetablePdfExporter, SchoolTimetablePdfExporter>();
+
+        // Butun maktab jadvali (eski kontrakt) hamon PDFsharp bilan chiziladi.
+        services.TryAddScoped<SchoolTimetablePdfExporter>();
+        services.TryAddScoped<ISchoolTimetablePdfExporter>(sp => sp.GetRequiredService<SchoolTimetablePdfExporter>());
+
+        // Qamrovi aniq eksport (sinf/o'qituvchi/maktab) — DIZAYN shabloniga asoslangan
+        // eksportchi. U ma'lumotni YANGI Card/Lesson modelidan o'qiydi, shuning uchun
+        // juft dars, guruh bo'linmasi va A/B hafta PDF ga ham tushadi (eski
+        // SchoolTimetablePdfExporter da bu uchtasi umuman yo'q edi).
+        services.TryAddScoped<IScopedTimetablePdfExporter>(sp => new DesignBasedTimetablePdfExporter(
+            sp.GetRequiredService<ICardBoardService>(),
+            sp.GetRequiredService<ISchedulingStore>(),
+            sp.GetRequiredService<IUnitOfWork>()));
 
         return services;
     }

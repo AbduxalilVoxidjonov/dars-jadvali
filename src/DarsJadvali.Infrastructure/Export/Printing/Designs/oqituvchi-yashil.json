@@ -1,0 +1,112 @@
+{
+  "key": "oqituvchi-yashil",
+  "name": "O'qituvchi jadvali — Yashil",
+  "description": "Bitta o'qituvchining haftalik jadvali: katakda fan va SINF ko'rinadi (o'qituvchi ismi takrorlanmaydi), pastda xonalar legendasi. aSc 'Sample Green' + 'internal_table_teacher' g'oyasi.",
+  "scope": "teacher",
+
+  "page": { "size": "A4", "orientation": "landscape", "marginMm": 12 },
+
+  "theme": {
+    "accent": "#2E7D32",
+    "headerBackground": "#2E7D32",
+    "headerForeground": "#FFFFFF",
+    "cardBackground": "#E2F1E3",
+    "cardForeground": "#12321A",
+    "emptyBackground": "#FFFFFF",
+    "gridLine": "#8FB394",
+    "muted": "#4C6650"
+  },
+
+  "elements": [
+    {
+      "type": "text",
+      "rect": [0, 0, 1, 0.055],
+      "text": "{School.Name}",
+      "fontRatio": 0.026,
+      "bold": true,
+      "align": "center",
+      "color": "#2E7D32"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.055, 1, 0.100],
+      "text": "{Teacher.Name} — dars jadvali",
+      "fontRatio": 0.024,
+      "bold": true,
+      "align": "center",
+      "color": "#12321A"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.100, 1, 0.128],
+      "text": "{AcademicYear} · {Term}",
+      "fontRatio": 0.014,
+      "align": "center",
+      "color": "#4C6650"
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.133, 1, 0.135],
+      "thickness": 1.2,
+      "color": "#2E7D32"
+    },
+    {
+      "type": "timetable",
+      "rect": [0, 0.150, 1, 0.780],
+      "axis": "days-as-columns",
+      "showTime": true,
+      "showTeacher": false,
+      "showClass": true,
+      "showRoom": true,
+      "showGroup": true,
+      "showWeeks": true,
+      "showShift": true,
+      "headerFontRatio": 0.017,
+      "cellFontRatio": 0.0145,
+      "colorBy": "subject",
+      "sectionsPerPage": 1
+    },
+    {
+      "type": "legend",
+      "rect": [0, 0.805, 0.48, 0.945],
+      "legend": "lessons",
+      "title": "Darslar",
+      "columns": 1,
+      "fontRatio": 0.0115,
+      "showColors": true,
+      "maxItems": 14
+    },
+    {
+      "type": "legend",
+      "rect": [0.52, 0.805, 1, 0.945],
+      "legend": "rooms",
+      "title": "Xonalar",
+      "columns": 2,
+      "fontRatio": 0.0115,
+      "showColors": false,
+      "maxItems": 20
+    },
+    {
+      "type": "line",
+      "rect": [0, 0.955, 1, 0.956],
+      "thickness": 0.5,
+      "color": "#8FB394"
+    },
+    {
+      "type": "text",
+      "rect": [0, 0.962, 0.5, 1.0],
+      "text": "{App.Name} · {Date}",
+      "fontRatio": 0.011,
+      "align": "left",
+      "color": "#4C6650"
+    },
+    {
+      "type": "text",
+      "rect": [0.5, 0.962, 1.0, 1.0],
+      "text": "{Page} / {PageCount}",
+      "fontRatio": 0.011,
+      "align": "right",
+      "color": "#4C6650"
+    }
+  ]
+}

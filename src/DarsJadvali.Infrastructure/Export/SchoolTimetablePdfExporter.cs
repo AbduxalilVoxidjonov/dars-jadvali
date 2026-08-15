@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using DarsJadvali.Application.Export;
+using DarsJadvali.Application.Services;
 using DarsJadvali.Domain.Common;
+using DarsJadvali.Domain.Enums;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
@@ -12,14 +14,40 @@ namespace DarsJadvali.Infrastructure.Export;
 /// Ustunlar: Sinf | Soat | faol ish kunlari. Har sinf N ta qator egallaydi,
 /// sinf nomi shu qatorlar bo'ylab bir marta (vertikal birlashtirilgan) yoziladi.
 /// </summary>
-public sealed class SchoolTimetablePdfExporter : ISchoolTimetablePdfExporter
+public sealed class SchoolTimetablePdfExporter : ISchoolTimetablePdfExporter, IScopedTimetablePdfExporter
 {
     private readonly ITimetableExportModelBuilder _builder;
+    private readonly IScheduleService? _schedules;
+    private readonly IWorkDayService? _workDays;
+    private readonly ITeacherService? _teachers;
+    private readonly IClassGroupService? _classGroups;
 
-    /// <summary>Yangi eksportchi yaratadi.</summary>
+    /// <summary>
+    /// Faqat sinf va maktab qamrovi uchun yetarli qurilma.
+    /// O'qituvchi jadvali bu qurilmada MAVJUD EMAS (unga jadval servislari kerak).
+    /// </summary>
     public SchoolTimetablePdfExporter(ITimetableExportModelBuilder builder)
     {
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+    }
+
+    /// <summary>
+    /// To'liq qurilma — DI konteyner aynan shuni tanlaydi. O'qituvchi jadvali
+    /// <see cref="PdfExportOptions"/> da qamrov sifatida yo'q (u faqat sinfni biladi),
+    /// shuning uchun uning modeli shu servislar orqali shu yerda quriladi.
+    /// </summary>
+    public SchoolTimetablePdfExporter(
+        ITimetableExportModelBuilder builder,
+        IScheduleService schedules,
+        IWorkDayService workDays,
+        ITeacherService teachers,
+        IClassGroupService classGroups)
+        : this(builder)
+    {
+        _schedules = schedules ?? throw new ArgumentNullException(nameof(schedules));
+        _workDays = workDays ?? throw new ArgumentNullException(nameof(workDays));
+        _teachers = teachers ?? throw new ArgumentNullException(nameof(teachers));
+        _classGroups = classGroups ?? throw new ArgumentNullException(nameof(classGroups));
     }
 
     // ------------------------------------------------------------------
@@ -41,6 +69,10 @@ public sealed class SchoolTimetablePdfExporter : ISchoolTimetablePdfExporter
     private const double LessonColumnWidth = 76;
 
     /// <inheritdoc />
+    [Obsolete("Qamrov aniq emas: ClassGroupId null bo'lsa jimgina BUTUN MAKTAB jadvali chiqadi. " +
+              "IScopedTimetablePdfExporter ning ExportClassScheduleAsync / ExportTeacherScheduleAsync / " +
+              "ExportSchoolScheduleAsync metodlaridan foydalaning.",
+              DiagnosticId = "DJ0001")]
     public async Task<byte[]> ExportAsync(PdfExportOptions options, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -56,6 +88,183 @@ public sealed class SchoolTimetablePdfExporter : ISchoolTimetablePdfExporter
     {
         ArgumentNullException.ThrowIfNull(options);
         return $"Maktab-jadvali-{now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}.pdf";
+    }
+
+    // ==================================================================
+    // Qamrovi ANIQ eksport (IScopedTimetablePdfExporter)
+    // ==================================================================
+
+    /// <inheritdoc />
+    public async Task<TimetablePdfDocument> ExportClassScheduleAsync(
+        int classGroupId, PdfExportOptions? options = null, CancellationToken ct = default)
+    {
+        if (classGroupId <= 0)
+        {
+            throw new ArgumentException(
+                "Sinf tanlanmagan: butun maktab jadvalini chiqarish uchun ExportSchoolScheduleAsync ishlatiladi.",
+                nameof(classGroupId));
+        }
+
+        var scoped = (options ?? new PdfExportOptions()) with { ClassGroupId = classGroupId };
+
+        var model = await _builder.BuildAsync(scoped, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+
+        var className = model.Blocks.Count > 0 ? model.Blocks[0].ClassName : classGroupId.ToString(CultureInfo.InvariantCulture);
+        var bytes = Render(model, scoped, DateTime.Now, ct);
+
+        return new TimetablePdfDocument(bytes, BuildFileName(className + "-sinf-jadvali", DateTime.Now));
+    }
+
+    /// <inheritdoc />
+    public async Task<TimetablePdfDocument> ExportSchoolScheduleAsync(
+        PdfExportOptions? options = null, CancellationToken ct = default)
+    {
+        // Qamrov ATAYLAB butun maktab — chaqiruvchi buni metod nomi bilan tasdiqlagan.
+        var scoped = (options ?? new PdfExportOptions()) with { ClassGroupId = null };
+
+        var model = await _builder.BuildAsync(scoped, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+
+        var bytes = Render(model, scoped, DateTime.Now, ct);
+
+        return new TimetablePdfDocument(bytes, BuildFileName("Maktab-jadvali", DateTime.Now));
+    }
+
+    /// <inheritdoc />
+    public async Task<TimetablePdfDocument> ExportTeacherScheduleAsync(
+        int teacherId, PdfExportOptions? options = null, CancellationToken ct = default)
+    {
+        if (teacherId <= 0)
+            throw new ArgumentException("O'qituvchi tanlanmagan.", nameof(teacherId));
+
+        if (_schedules is null || _workDays is null || _teachers is null || _classGroups is null)
+        {
+            throw new InvalidOperationException(
+                "O'qituvchi jadvali uchun eksportchi to'liq qurilma bilan yaratilishi kerak " +
+                "(IScheduleService, IWorkDayService, ITeacherService, IClassGroupService).");
+        }
+
+        var teacher = await _teachers.GetByIdAsync(teacherId, ct).ConfigureAwait(false)
+            ?? throw new ArgumentException($"O'qituvchi topilmadi (Id={teacherId}).", nameof(teacherId));
+
+        var scoped = (options ?? new PdfExportOptions()) with { ClassGroupId = null };
+        var model = await BuildTeacherModelAsync(teacher, scoped, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+
+        var bytes = Render(model, scoped, DateTime.Now, ct);
+
+        return new TimetablePdfDocument(bytes, BuildFileName(teacher.FullName + "-jadvali", DateTime.Now));
+    }
+
+    /// <summary>
+    /// O'qituvchi jadvalining hujjat modeli. Umumiy chizuvchi ishlatilgani uchun
+    /// blok sifatida bitta "sinf" — o'qituvchining o'zi olinadi; katakning ikkinchi
+    /// qatorida esa o'qituvchi ismi emas, DARS O'TILADIGAN SINF ko'rsatiladi
+    /// (o'qituvchi jadvalida kerakli ma'lumot aynan shu).
+    /// </summary>
+    private async Task<TimetableDocumentModel> BuildTeacherModelAsync(
+        Domain.Entities.Teacher teacher, PdfExportOptions options, CancellationToken ct)
+    {
+        var activeDays = await _workDays!.GetActiveAsync(ct).ConfigureAwait(false);
+        var slots = await _workDays.GetLessonSlotsAsync(ct).ConfigureAwait(false);
+        var maxLessons = await _workDays.GetMaxLessonNumberAsync(ct).ConfigureAwait(false);
+        var groups = await _classGroups!.GetAllAsync(ct).ConfigureAwait(false);
+        var entries = await _schedules!
+            .GetByTeacherAsync(teacher.Id, options.ScheduleId, ct)
+            .ConfigureAwait(false);
+
+        var days = activeDays.Select(d => d.DayOfWeek).Distinct().OrderBy(d => (int)d).ToList();
+        var dayNames = days.Select(d => d.ToUzbek()).ToList();
+        var dayIndex = days.Select((d, i) => (d, i)).ToDictionary(x => x.d, x => x.i);
+
+        var relevant = entries.Where(e => dayIndex.ContainsKey(e.DayOfWeek)).ToList();
+
+        if (maxLessons <= 0)
+            maxLessons = relevant.Count == 0 ? 0 : relevant.Max(e => e.LessonNumber);
+        else if (relevant.Count > 0)
+            maxLessons = Math.Max(maxLessons, relevant.Max(e => e.LessonNumber));
+
+        var groupNames = groups.ToDictionary(g => g.Id, g => g.Name);
+        var groupRooms = groups.ToDictionary(g => g.Id, g => g.RoomNumber);
+
+        // (kun, soat) -> yozuv. Bir vaqtda ikkita dars bo'lsa (nomuvofiq jadval) — birinchisi.
+        var byCell = new Dictionary<(Domain.Enums.WeekDay Day, int Lesson), Domain.Entities.ScheduleEntry>();
+        foreach (var entry in relevant)
+            byCell.TryAdd((entry.DayOfWeek, entry.LessonNumber), entry);
+
+        var timeLabels = new Dictionary<int, string>();
+        foreach (var slot in slots)
+            timeLabels[slot.LessonNumber] = $"{FormatTime(slot.StartTime)}-{FormatTime(slot.EndTime)}";
+
+        var rows = new List<TimetableRowModel>(Math.Max(maxLessons, 0));
+        for (var lesson = 1; lesson <= maxLessons; lesson++)
+        {
+            var cells = new TimetableCellModel?[days.Count];
+            for (var d = 0; d < days.Count; d++)
+            {
+                if (!byCell.TryGetValue((days[d], lesson), out var entry))
+                    continue;
+
+                var subject = entry.Subject?.Name;
+                if (string.IsNullOrWhiteSpace(subject))
+                    subject = entry.Subject?.Code;
+                if (string.IsNullOrWhiteSpace(subject))
+                    subject = "(fan ko'rsatilmagan)";
+
+                groupNames.TryGetValue(entry.ClassGroupId, out var className);
+
+                string? room = null;
+                if (options.IncludeRoom)
+                {
+                    room = entry.RoomNumber;
+                    if (string.IsNullOrWhiteSpace(room) &&
+                        groupRooms.TryGetValue(entry.ClassGroupId, out var groupRoom))
+                    {
+                        room = groupRoom;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(room))
+                        room = null;
+                }
+
+                cells[d] = new TimetableCellModel(subject!, className, room);
+            }
+
+            timeLabels.TryGetValue(lesson, out var time);
+            rows.Add(new TimetableRowModel(
+                lesson,
+                $"{lesson.ToString(CultureInfo.InvariantCulture)}-soat",
+                time,
+                cells));
+        }
+
+        var blocks = days.Count > 0 && maxLessons > 0
+            ? new List<TimetableClassBlockModel> { new(0, teacher.FullName, rows) }
+            : new List<TimetableClassBlockModel>();
+
+        var schoolName = string.IsNullOrWhiteSpace(options.SchoolName)
+            ? teacher.FullName
+            : options.SchoolName!.Trim();
+
+        return new TimetableDocumentModel(schoolName, days, dayNames, blocks, relevant.Count);
+    }
+
+    private static string FormatTime(TimeSpan time) =>
+        string.Create(CultureInfo.InvariantCulture, $"{time.Hours:00}:{time.Minutes:00}");
+
+    /// <summary>Fayl nomini xavfsiz belgilardan quradi.</summary>
+    private static string BuildFileName(string label, DateTime now)
+    {
+        var cleaned = new string(label
+            .Select(c => Path.GetInvalidFileNameChars().Contains(c) || c == ' ' ? '-' : c)
+            .ToArray())
+            .Trim('-');
+
+        if (cleaned.Length == 0)
+            cleaned = "Jadval";
+
+        return $"{cleaned}-{now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}.pdf";
     }
 
     // ==================================================================

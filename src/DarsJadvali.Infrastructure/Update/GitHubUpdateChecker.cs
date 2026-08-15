@@ -2,6 +2,8 @@ using System.Net;
 using System.Text.Json;
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Domain.Common;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DarsJadvali.Infrastructure.Update;
 
@@ -33,13 +35,28 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     /// <summary>Reliz sahifasi manzilida tegdan oldin keladigan bo'lak.</summary>
     private const string TagPathMarker = "/releases/tag/";
 
+    /// <summary>
+    /// Tashqaridan (tarmoqdan) kelgan manzil UCHUN ruxsat etilgan hostlar.
+    /// GitHub javobi buzilgan yoki o'rtadagi shaxs (MITM) tomonidan almashtirilgan
+    /// bo'lsa, foydalanuvchining brauzerida ochiladigan manzil begona saytga
+    /// olib bormasligi kerak — shuning uchun ro'yxat QAT'IY va faqat shu yerda.
+    /// </summary>
+    private static readonly string[] AllowedHosts =
+    {
+        "github.com",
+        "www.github.com",
+        "api.github.com",
+        "objects.githubusercontent.com",
+    };
+
     private readonly HttpClient _http;
+    private readonly ILogger _logger;
     private readonly string _currentVersion;
     private readonly string _latestReleaseUrl;
     private readonly string _apiUrl;
 
     /// <summary>
-    /// Yangi tekshiruvchi yaratadi.
+    /// Yangi tekshiruvchi yaratadi (jurnalsiz — sinovlar va oddiy holatlar uchun).
     /// </summary>
     /// <param name="httpClient">
     /// HTTP mijoz (sinovda soxta handler bilan almashtiriladi). Ishlab chiqarishda
@@ -56,8 +73,28 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
         string? currentVersion = null,
         string? latestReleaseUrl = null,
         string? apiUrl = null)
+        : this(httpClient, NullLogger<GitHubUpdateChecker>.Instance, currentVersion, latestReleaseUrl, apiUrl)
+    {
+    }
+
+    /// <summary>
+    /// Jurnal (log) bilan yangi tekshiruvchi yaratadi — DI shu qurilmani tanlaydi.
+    /// Rad etilgan manzillar aynan shu jurnalga yoziladi.
+    /// </summary>
+    /// <param name="httpClient">HTTP mijoz (qarang: <see cref="CreateHttpClient"/>).</param>
+    /// <param name="logger">Jurnal — majburiy, DI konteyner beradi.</param>
+    /// <param name="currentVersion">Joriy versiya; berilmasa <see cref="AppInfo.Version"/>.</param>
+    /// <param name="latestReleaseUrl">So'nggi relizga yo'naltiruvchi sahifa.</param>
+    /// <param name="apiUrl">API manzili.</param>
+    public GitHubUpdateChecker(
+        HttpClient httpClient,
+        ILogger<GitHubUpdateChecker> logger,
+        string? currentVersion = null,
+        string? latestReleaseUrl = null,
+        string? apiUrl = null)
     {
         _http = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _currentVersion = string.IsNullOrWhiteSpace(currentVersion) ? AppInfo.Version : currentVersion.Trim();
         _latestReleaseUrl = string.IsNullOrWhiteSpace(latestReleaseUrl)
             ? AppInfo.LatestReleaseUrl
@@ -171,6 +208,16 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                 return Probe.NoRelease();
 
             var location = ResolveLocation(response, request.RequestUri);
+
+            // Manzil TARMOQDAN keladi — tekshirilmasdan yuqoriga (oxir-oqibat brauzerga)
+            // uzatilmaydi. Ruxsat etilmagan manzil "yo'q" deb qaraladi.
+            if (!IsAllowedReleaseUrl(location))
+            {
+                LogRejectedUrl(location, "302 Location sarlavhasi");
+                return Probe.Unavailable(
+                    "GitHub javobidan so'nggi reliz aniqlanmadi. Keyinroq qayta urinib ko'ring.");
+            }
+
             var tag = ExtractTag(location);
 
             if (tag is null)
@@ -201,6 +248,42 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             return Probe.Unavailable("Yangilanishni tekshirib bo'lmadi. Keyinroq qayta urinib ko'ring.");
         }
     }
+
+    // -----------------------------------------------------------------
+    // Tarmoqdan kelgan manzilni tekshirish (allowlist)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Manzil foydalanuvchiga ko'rsatish/ochish uchun xavfsizmi.
+    /// Shartlar: absolyut manzil, sxema faqat <c>https</c>, host esa
+    /// <c>github.com</c> / <c>api.github.com</c> / <c>objects.githubusercontent.com</c>
+    /// (yoki ularning subdomeni EMAS — aynan o'zi). Foydalanuvchi ma'lumoti (<c>user@host</c>)
+    /// bo'lgan manzil ham rad etiladi: u haqiqiy hostni yashirishga imkon beradi.
+    /// </summary>
+    public static bool IsAllowedReleaseUrl(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var parsed) && IsAllowedReleaseUrl(parsed);
+
+    /// <inheritdoc cref="IsAllowedReleaseUrl(string?)" />
+    public static bool IsAllowedReleaseUrl(Uri? url)
+    {
+        if (url is null || !url.IsAbsoluteUri)
+            return false;
+
+        if (!string.Equals(url.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!string.IsNullOrEmpty(url.UserInfo))
+            return false;
+
+        return AllowedHosts.Contains(url.Host, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Rad etilgan manzilni jurnalga yozadi (ogohlantirish darajasida).</summary>
+    private void LogRejectedUrl(object? url, string source)
+        => _logger.LogWarning(
+            "Yangilanish tekshiruvi: ishonchsiz manzil rad etildi ({Source}): {Url}",
+            source,
+            url?.ToString() ?? "(bo'sh)");
 
     /// <summary>
     /// Yo'naltirish manzilini aniqlaydi. Nisbiy <c>Location</c> so'rov manziliga nisbatan
@@ -375,7 +458,16 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
                 return Failed("GitHub javobini o'qib bo'lmadi.");
 
             tag = ReadString(root, "tag_name");
+
+            // "html_url" ham tarmoqdan kelgan qiymat — ro'yxatdan o'tmasa tashlab yuboriladi
+            // va uning o'rniga bizning o'z relizlar sahifamiz ishlatiladi (qarang: Evaluate).
             releaseUrl = ReadString(root, "html_url");
+            if (releaseUrl is not null && !IsAllowedReleaseUrl(releaseUrl))
+            {
+                LogRejectedUrl(releaseUrl, "API javobidagi html_url");
+                releaseUrl = null;
+            }
+
             notes = Shorten(ReadString(root, "body"));
         }
         catch (JsonException)

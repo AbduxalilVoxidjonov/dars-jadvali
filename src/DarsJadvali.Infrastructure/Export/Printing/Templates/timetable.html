@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{TITLE}</title>
+<style>
+/* Butun uslub shu yerda — TASHQI FAYL YO'Q, hujjat offline ochiladi. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  color: #1c2733;
+  background: #f4f6f9;
+}
+.doc { max-width: 1200px; margin: 0 auto; }
+.doc-head { text-align: center; margin-bottom: 14px; }
+.doc-head h1 { margin: 0 0 4px; font-size: 22px; color: {ACCENT}; }
+.doc-head .sub { margin: 0 0 2px; font-size: 17px; font-weight: 600; }
+.doc-head .meta { margin: 0; font-size: 13px; color: {MUTED}; }
+nav.sections { margin: 12px 0 18px; text-align: center; line-height: 2; }
+nav.sections a {
+  display: inline-block; margin: 0 3px; padding: 3px 10px;
+  border: 1px solid {ACCENT}; border-radius: 12px;
+  color: {ACCENT}; text-decoration: none; font-size: 13px;
+}
+nav.sections a:hover { background: {ACCENT}; color: #fff; }
+section.grid { background: #fff; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+section.grid > h2 { margin: 0 0 8px; font-size: 17px; color: {ACCENT}; }
+section.grid > h2 small { font-weight: 400; color: {MUTED}; font-size: 13px; }
+.scroll { overflow-x: auto; }
+table.tt { border-collapse: collapse; width: 100%; table-layout: fixed; }
+table.tt th, table.tt td { border: 1px solid {GRID_LINE}; padding: 0; vertical-align: top; }
+table.tt thead th { background: {HEADER_BG}; color: {HEADER_FG}; padding: 6px 4px; font-size: 13px; }
+table.tt th.hour { width: 78px; background: {HEADER_BG}; color: {HEADER_FG}; font-size: 12px; padding: 4px; text-align: center; vertical-align: middle; }
+table.tt th.hour .time { display: block; font-weight: 400; opacity: .85; font-size: 11px; }
+table.tt th.shift { width: 22px; background: {ACCENT}; color: {HEADER_FG}; font-size: 11px; padding: 2px; }
+table.tt th.shift span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+td.slot { height: 46px; }
+td.slot .lanes { display: flex; height: 100%; min-height: 44px; }
+td.slot .lane { flex: 1 1 0; min-width: 0; padding: 3px 4px; border-left: 1px dashed {GRID_LINE}; }
+td.slot .lane:first-child { border-left: 0; }
+.card { height: 100%; border-radius: 3px; padding: 2px 3px; background: {CARD_BG}; position: relative; }
+.card .subject { font-weight: 600; font-size: 12.5px; line-height: 1.2; word-wrap: break-word; }
+.card .line { font-size: 11px; color: {MUTED}; line-height: 1.25; word-wrap: break-word; }
+.card.double { box-shadow: inset 0 0 0 2px {ACCENT}; }
+.card .week {
+  position: absolute; top: 2px; right: 2px;
+  background: {ACCENT}; color: #fff; font-size: 9.5px; font-weight: 700;
+  border-radius: 2px; padding: 0 3px; line-height: 1.4;
+}
+.card .group { font-size: 10.5px; color: {MUTED}; font-style: italic; }
+.cont { font-size: 10.5px; color: {MUTED}; padding: 3px 4px; }
+.legend { margin-top: 10px; font-size: 12px; }
+.legend h3 { margin: 0 0 5px; font-size: 13px; color: {ACCENT}; }
+.legend ul { list-style: none; margin: 0; padding: 0; columns: 3; }
+.legend li { break-inside: avoid; padding: 1px 0; }
+.legend .swatch { display: inline-block; width: 10px; height: 10px; border: 1px solid {GRID_LINE}; margin-right: 5px; vertical-align: -1px; }
+.legend .detail { color: {MUTED}; }
+.empty { padding: 24px; text-align: center; color: {MUTED}; }
+.doc-foot { text-align: center; font-size: 12px; color: {MUTED}; padding: 10px 0; }
+@media print {
+  body { background: #fff; padding: 0; }
+  nav.sections { display: none; }
+  section.grid { box-shadow: none; page-break-after: always; }
+  section.grid:last-of-type { page-break-after: auto; }
+}
+@media (max-width: 700px) {
+  .legend ul { columns: 1; }
+}
+</style>
+</head>
+<body>
+<div class="doc">
+<header class="doc-head">
+  <h1>{SCHOOL}</h1>
+  <p class="sub">{SUBTITLE}</p>
+  <p class="meta">{META}</p>
+</header>
+{NAV}
+{CONTENT}
+<footer class="doc-foot">{FOOTER}</footer>
+</div>
+</body>
+</html>
