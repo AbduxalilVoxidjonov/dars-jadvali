@@ -25,20 +25,25 @@ public sealed class ScheduleEntryConfiguration : IEntityTypeConfiguration<Schedu
             .HasForeignKey(x => x.ScheduleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Ma'lumotnomalar — RESTRICT (00 §10.8, 4-band).
+        // Ilgari bular Cascade edi: bitta o'qituvchini o'chirish uning BUTUN jadvalini
+        // jimgina o'chirib yuborardi va foydalanuvchi buni bilmasdi. Endi baza rad etadi,
+        // Application esa tipli xato beradi (SqliteExceptionTranslator).
+        // Sxema v2 dagi LessonTeacher/LessonClass/LessonGroup allaqachon shunday ishlaydi.
         builder.HasOne(x => x.ClassGroup)
             .WithMany(c => c.ScheduleEntries)
             .HasForeignKey(x => x.ClassGroupId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.Subject)
             .WithMany(s => s.ScheduleEntries)
             .HasForeignKey(x => x.SubjectId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.Teacher)
             .WithMany(t => t.ScheduleEntries)
             .HasForeignKey(x => x.TeacherId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         // CONTRACT §3: ikkita unikal indeks — endi HAR BIR JADVAL ichida alohida amal qiladi,
         // shunda turli o'quv yili/variantda bir xil o'rin band bo'lishi mumkin.

@@ -1,4 +1,5 @@
 using DarsJadvali.Domain.Entities;
+using DarsJadvali.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -24,7 +25,31 @@ public sealed class SubjectConfiguration : IEntityTypeConfiguration<Subject>
             .HasMaxLength(16)
             .HasDefaultValue("#455A64");
 
-        // CONTRACT §3: Subject.Code unikal
-        builder.HasIndex(x => x.Code).IsUnique();
+        // --- sxema v2 kengaytmalari ---------------------------------------
+        builder.Property(x => x.ShortName).HasMaxLength(24);
+        builder.Property(x => x.Distribution)
+            .IsRequired()
+            .HasConversion<int>()
+            .HasDefaultValue(SubjectDistribution.None);
+        builder.Property(x => x.NeedsHomework).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.RequiresSpecialClassroom).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.ExternalId).HasMaxLength(64);
+        builder.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
+
+        builder.HasOne(x => x.AcademicYear)
+            .WithMany()
+            .HasForeignKey(x => x.AcademicYearId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // CONTRACT §3: Subject.Code unikal (eski kod shunga tayanadi — o'zgarmaydi)
+        builder.HasIndex(x => x.Code)
+            .IsUnique()
+            .HasDatabaseName("UX_Subjects_Code");
+
+        // v2: yil ichida qisqartma noyob (faqat yilga bog'langan yozuvlar orasida).
+        builder.HasIndex(x => new { x.AcademicYearId, x.ShortName })
+            .IsUnique()
+            .HasFilter("\"AcademicYearId\" IS NOT NULL AND \"ShortName\" IS NOT NULL AND \"IsDeleted\" = 0")
+            .HasDatabaseName("UX_Subjects_AcademicYearId_ShortName");
     }
 }

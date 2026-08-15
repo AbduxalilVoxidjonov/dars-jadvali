@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Domain.Common;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,21 @@ public class EfRepository<T> : IRepository<T> where T : BaseEntity
 
     public virtual async Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct = default)
         => await Set.OrderBy(x => x.Id).ToListAsync(ct);
+
+    /// <inheritdoc />
+    public virtual async Task<IReadOnlyList<T>> GetAllReadOnlyAsync(CancellationToken ct = default)
+        => await Set.AsNoTracking().OrderBy(x => x.Id).ToListAsync(ct);
+
+    /// <summary>
+    /// Shart <b>SQL'ga</b> tushadi va natija kuzatilmaydi: validatsiya/generatsiya
+    /// yo'lidagi "barcha yillarni o'qib, keyin xotirada filtrlash" muammosi shu bilan yopiladi.
+    /// </summary>
+    public virtual async Task<IReadOnlyList<T>> GetWhereAsync(
+        Expression<Func<T, bool>> predicate, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return await Set.AsNoTracking().Where(predicate).OrderBy(x => x.Id).ToListAsync(ct);
+    }
 
     public virtual async Task<T?> GetByIdAsync(int id, CancellationToken ct = default)
         => await Set.FirstOrDefaultAsync(x => x.Id == id, ct);

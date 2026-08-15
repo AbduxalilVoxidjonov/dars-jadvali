@@ -19,7 +19,15 @@ public sealed class AcademicYearConfiguration : IEntityTypeConfiguration<Academi
 
         builder.Property(x => x.Note).HasMaxLength(500);
 
+        // --- sxema v2 kengaytmalari ---------------------------------------
+        // Hammasi DEFAULT bilan: mavjud qatorlar migratsiyada avtomatik to'ladi.
+        builder.Property(x => x.DaysPerWeek).IsRequired().HasDefaultValue(6);
+        builder.Property(x => x.WeeksInCycle).IsRequired().HasDefaultValue(1);
+        builder.Property(x => x.TermsCount).IsRequired().HasDefaultValue(4);
+
         // O'quv yili nomi takrorlanmaydi.
-        builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.Name)
+            .IsUnique()
+            .HasDatabaseName("UX_AcademicYears_Name");
     }
 }

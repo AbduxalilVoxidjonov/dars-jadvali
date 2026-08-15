@@ -23,6 +23,17 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DaysPerWeek")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(6);
+
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -32,15 +43,234 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("StartYear")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly?>("StartsOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TermsCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(4);
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WeeksInCycle")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_AcademicYears_Name");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AcademicYears_Uid");
 
                     b.ToTable("AcademicYears", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Card", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DayNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("LegacyRoomNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LegacyScheduleEntryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Length")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("LessonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PeriodId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WeeksMask")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyScheduleEntryId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cards_LegacyScheduleEntryId")
+                        .HasFilter("\"LegacyScheduleEntryId\" IS NOT NULL");
+
+                    b.HasIndex("LessonId");
+
+                    b.HasIndex("PeriodId")
+                        .HasDatabaseName("IX_Cards_PeriodId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cards_Uid");
+
+                    b.HasIndex("ScheduleId", "DayNo")
+                        .HasDatabaseName("IX_Cards_ScheduleId_DayNo");
+
+                    b.HasIndex("ScheduleId", "LessonId", "DayNo", "PeriodId", "WeeksMask")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cards_Schedule_Lesson_Day_Period_Weeks");
+
+                    b.ToTable("Cards", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Cards_DayNo", "\"DayNo\" >= 0 AND \"DayNo\" <= 13");
+
+                            t.HasCheckConstraint("CK_Cards_Length", "\"Length\" >= 1 AND \"Length\" <= 8");
+
+                            t.HasCheckConstraint("CK_Cards_WeeksMask", "\"WeeksMask\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.CardClassroom", b =>
+                {
+                    b.Property<int>("CardId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("CardId", "ClassroomId");
+
+                    b.HasIndex("ClassroomId")
+                        .HasDatabaseName("IX_CardClassrooms_ClassroomId");
+
+                    b.ToTable("CardClassrooms", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.CardOccurrence", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CardId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DayNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PeriodNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ResourceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ResourceKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("WeekNo")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardId")
+                        .HasDatabaseName("IX_CardOccurrences_CardId");
+
+                    b.HasIndex("ScheduleId", "DayNo", "PeriodNo")
+                        .HasDatabaseName("IX_CardOccurrences_Schedule_Day_Period");
+
+                    b.HasIndex("ScheduleId", "ResourceKind", "ResourceId", "DayNo", "PeriodNo", "WeekNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CardOccurrences_Schedule_Resource_Slot");
+
+                    b.ToTable("CardOccurrences", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CardOccurrences_DayNo", "\"DayNo\" >= 0 AND \"DayNo\" <= 13");
+
+                            t.HasCheckConstraint("CK_CardOccurrences_PeriodNo", "\"PeriodNo\" >= 0");
+
+                            t.HasCheckConstraint("CK_CardOccurrences_WeekNo", "\"WeekNo\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.ClassDivision", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DivisionTag")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SchoolClassId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ClassDivisions_Uid");
+
+                    b.HasIndex("SchoolClassId", "DivisionTag")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ClassDivisions_SchoolClassId_DivisionTag");
+
+                    b.ToTable("ClassDivisions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ClassDivisions_DivisionTag", "\"DivisionTag\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.ClassGroup", b =>
@@ -48,6 +278,9 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -58,15 +291,302 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("StudentCount")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ClassGroups_Uid");
+
                     b.ToTable("ClassGroups", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Classroom", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsShared")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LegacySourceName")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Classrooms_Uid");
+
+                    b.HasIndex("AcademicYearId", "LegacySourceName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Classrooms_AcademicYearId_LegacySourceName")
+                        .HasFilter("\"LegacySourceName\" IS NOT NULL");
+
+                    b.HasIndex("AcademicYearId", "ShortName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Classrooms_AcademicYearId_ShortName")
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.ToTable("Classrooms", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Classrooms_Capacity", "\"Capacity\" IS NULL OR \"Capacity\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Grade", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GradeNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Grades_Uid");
+
+                    b.HasIndex("AcademicYearId", "GradeNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Grades_AcademicYearId_GradeNo")
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.ToTable("Grades", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Grades_GradeNo", "\"GradeNo\" >= 0 AND \"GradeNo\" <= 20");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Lesson", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AllowedDaysMask")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("AllowedWeeksMask")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LegacyTeacherAssignmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PeriodsPerCard")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PeriodsPerWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RequiredClassroomCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyTeacherAssignmentId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Lessons_LegacyTeacherAssignmentId")
+                        .HasFilter("\"LegacyTeacherAssignmentId\" IS NOT NULL");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Lessons_Uid");
+
+                    b.HasIndex("AcademicYearId", "SubjectId")
+                        .HasDatabaseName("IX_Lessons_AcademicYearId_SubjectId");
+
+                    b.ToTable("Lessons", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Lessons_PeriodsConsistency", "\"PeriodsPerWeek\" >= \"PeriodsPerCard\"");
+
+                            t.HasCheckConstraint("CK_Lessons_PeriodsPerCard", "\"PeriodsPerCard\" >= 1 AND \"PeriodsPerCard\" <= 8");
+
+                            t.HasCheckConstraint("CK_Lessons_PeriodsPerWeek", "\"PeriodsPerWeek\" > 0");
+
+                            t.HasCheckConstraint("CK_Lessons_RequiredClassroomCount", "\"RequiredClassroomCount\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonClass", b =>
+                {
+                    b.Property<int>("LessonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SchoolClassId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("LessonId", "SchoolClassId");
+
+                    b.HasIndex("SchoolClassId")
+                        .HasDatabaseName("IX_LessonClasses_SchoolClassId");
+
+                    b.ToTable("LessonClasses", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonClassroom", b =>
+                {
+                    b.Property<int>("LessonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClassroomId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("LessonId", "ClassroomId");
+
+                    b.HasIndex("ClassroomId")
+                        .HasDatabaseName("IX_LessonClassrooms_ClassroomId");
+
+                    b.ToTable("LessonClassrooms", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonGroup", b =>
+                {
+                    b.Property<int>("LessonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("StudentGroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("LessonId", "StudentGroupId");
+
+                    b.HasIndex("StudentGroupId")
+                        .HasDatabaseName("IX_LessonGroups_StudentGroupId");
+
+                    b.ToTable("LessonGroups", (string)null);
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonSlot", b =>
@@ -75,21 +595,121 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("EndTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("LessonNumber")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("StartTime")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("LessonNumber")
                         .IsUnique();
 
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_LessonSlots_Uid");
+
                     b.ToTable("LessonSlots", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonTeacher", b =>
+                {
+                    b.Property<int>("LessonId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("LessonId", "TeacherId");
+
+                    b.HasIndex("TeacherId")
+                        .HasDatabaseName("IX_LessonTeachers_TeacherId");
+
+                    b.ToTable("LessonTeachers", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Period", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EndTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsBreak")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PeriodNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("StartTime")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId")
+                        .HasDatabaseName("IX_Periods_ShiftId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Periods_Uid");
+
+                    b.HasIndex("AcademicYearId", "PeriodNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Periods_AcademicYearId_PeriodNo");
+
+                    b.ToTable("Periods", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Periods_PeriodNo", "\"PeriodNo\" >= 0");
+
+                            t.HasCheckConstraint("CK_Periods_TimeOrder", "\"EndTime\" > \"StartTime\"");
+                        });
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.Schedule", b =>
@@ -101,7 +721,13 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("AcademicYearId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("CopiedFromScheduleId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -114,12 +740,46 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TermId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WeeksInCycle")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("CopiedFromScheduleId");
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Schedules_IsActive")
+                        .HasFilter("\"IsActive\" = 1");
+
+                    b.HasIndex("TermId")
+                        .HasDatabaseName("IX_Schedules_TermId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Schedules_Uid");
 
                     b.HasIndex("AcademicYearId", "Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_Schedules_AcademicYearId_Name");
 
                     b.ToTable("Schedules", (string)null);
                 });
@@ -133,6 +793,9 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("ClassGroupId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("INTEGER");
 
@@ -141,6 +804,9 @@ namespace DarsJadvali.Infrastructure.Migrations
 
                     b.Property<string>("RoomNumber")
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ScheduleId")
@@ -152,6 +818,12 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("TeacherId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClassGroupId");
@@ -159,6 +831,10 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.HasIndex("SubjectId");
 
                     b.HasIndex("TeacherId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ScheduleEntries_Uid");
 
                     b.HasIndex("ScheduleId", "ClassGroupId", "DayOfWeek", "LessonNumber")
                         .IsUnique();
@@ -169,10 +845,235 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.ToTable("ScheduleEntries", (string)null);
                 });
 
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.SchoolClass", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ClassTeacherId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("HomeClassroomId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LegacyClassGroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("StudentCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassTeacherId");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("HomeClassroomId");
+
+                    b.HasIndex("LegacyClassGroupId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SchoolClasses_LegacyClassGroupId")
+                        .HasFilter("\"LegacyClassGroupId\" IS NOT NULL");
+
+                    b.HasIndex("ShiftId")
+                        .HasDatabaseName("IX_SchoolClasses_ShiftId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SchoolClasses_Uid");
+
+                    b.HasIndex("AcademicYearId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SchoolClasses_AcademicYearId_Name")
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.HasIndex("AcademicYearId", "ShortName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SchoolClasses_AcademicYearId_ShortName")
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.ToTable("SchoolClasses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SchoolClasses_StudentCount", "\"StudentCount\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Shift", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ShiftNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Shifts_Uid");
+
+                    b.HasIndex("AcademicYearId", "ShiftNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Shifts_AcademicYearId_ShiftNo");
+
+                    b.ToTable("Shifts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Shifts_ShiftNo", "\"ShiftNo\" >= 1 AND \"ShiftNo\" <= 4");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.StudentGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ClassDivisionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsEntireClass")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SchoolClassId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("StudentCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_StudentGroups_Uid");
+
+                    b.HasIndex("ClassDivisionId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UX_StudentGroups_ClassDivisionId_Name")
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.HasIndex(new[] { "SchoolClassId" }, "IX_StudentGroups_SchoolClassId");
+
+                    b.HasIndex(new[] { "SchoolClassId" }, "UX_StudentGroups_SchoolClassId_EntireClass")
+                        .IsUnique()
+                        .HasFilter("\"IsEntireClass\" = 1 AND \"IsDeleted\" = 0");
+
+                    b.ToTable("StudentGroups", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StudentGroups_StudentCount", "\"StudentCount\" IS NULL OR \"StudentCount\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("DarsJadvali.Domain.Entities.Subject", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AcademicYearId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
@@ -187,15 +1088,68 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("#455A64");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Distribution")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<int?>("MaxStudents")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("NeedsHomework")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("RequiresSpecialClassroom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_Subjects_Code");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Subjects_Uid");
+
+                    b.HasIndex("AcademicYearId", "ShortName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Subjects_AcademicYearId_ShortName")
+                        .HasFilter("\"AcademicYearId\" IS NOT NULL AND \"ShortName\" IS NOT NULL AND \"IsDeleted\" = 0");
 
                     b.ToTable("Subjects", (string)null);
                 });
@@ -206,6 +1160,9 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ColorCode")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -213,23 +1170,90 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("#1976D2");
 
+                    b.Property<int?>("ContractPeriodsPerWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("ContractRate")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsVacancy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaxGapsPerDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxLessonsPerDay")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("FullName");
+                    b.HasIndex("FullName")
+                        .HasDatabaseName("IX_Teachers_FullName");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Teachers_Uid");
+
+                    b.HasIndex("AcademicYearId", "ShortName")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Teachers_AcademicYearId_ShortName")
+                        .HasFilter("\"AcademicYearId\" IS NOT NULL AND \"ShortName\" IS NOT NULL AND \"IsDeleted\" = 0");
 
                     b.ToTable("Teachers", (string)null);
                 });
@@ -243,11 +1267,23 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("ClassGroupId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("SubjectId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("TeacherId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("WeeklyHoursCount")
                         .HasColumnType("INTEGER");
@@ -257,6 +1293,10 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.HasIndex("ClassGroupId");
 
                     b.HasIndex("SubjectId");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TeacherAssignments_Uid");
 
                     b.HasIndex("TeacherId", "SubjectId", "ClassGroupId")
                         .IsUnique();
@@ -270,6 +1310,9 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("INTEGER");
 
@@ -281,17 +1324,161 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("StartTime")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("TeacherId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TeacherAvailabilities_Uid");
 
                     b.HasIndex("TeacherId", "DayOfWeek");
 
                     b.ToTable("TeacherAvailabilities", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Term", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("StartsOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Terms_Uid");
+
+                    b.HasIndex("AcademicYearId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Terms_AcademicYearId_Ordinal");
+
+                    b.ToTable("Terms", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Terms_Ordinal", "\"Ordinal\" >= 1 AND \"Ordinal\" <= 12");
+                        });
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.TimeOff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Availability")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DayNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LegacyTeacherAvailabilityId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OwnerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OwnerKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Penalty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("PeriodNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WeeksMask")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyTeacherAvailabilityId")
+                        .HasDatabaseName("IX_TimeOffs_LegacyTeacherAvailabilityId")
+                        .HasFilter("\"LegacyTeacherAvailabilityId\" IS NOT NULL");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TimeOffs_Uid");
+
+                    b.HasIndex("AcademicYearId", "OwnerKind", "OwnerId", "DayNo", "PeriodNo", "WeeksMask")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TimeOffs_Owner_Slot");
+
+                    b.ToTable("TimeOffs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_TimeOffs_DayNo", "\"DayNo\" >= 0 AND \"DayNo\" <= 13");
+
+                            t.HasCheckConstraint("CK_TimeOffs_Penalty", "\"Penalty\" >= 0 AND \"Penalty\" <= 1000");
+
+                            t.HasCheckConstraint("CK_TimeOffs_PeriodNo", "\"PeriodNo\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.WorkDay", b =>
@@ -299,6 +1486,17 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<int?>("AcademicYearId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DayNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("INTEGER");
@@ -313,12 +1511,255 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(7);
 
+                    b.Property<int>("MinLessonsPerDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RowVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ShortName")
+                        .HasMaxLength(5)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("Uid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DayOfWeek")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_WorkDays_DayOfWeek");
+
+                    b.HasIndex("Uid")
+                        .IsUnique()
+                        .HasDatabaseName("UX_WorkDays_Uid");
+
+                    b.HasIndex("AcademicYearId", "DayNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_WorkDays_AcademicYearId_DayNo")
+                        .HasFilter("\"AcademicYearId\" IS NOT NULL");
 
                     b.ToTable("WorkDays", (string)null);
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Card", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Lesson", "Lesson")
+                        .WithMany("Cards")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Period", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Schedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("Period");
+
+                    b.Navigation("Schedule");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.CardClassroom", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Card", "Card")
+                        .WithMany("Classrooms")
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Card");
+
+                    b.Navigation("Classroom");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.CardOccurrence", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Card", "Card")
+                        .WithMany("Occurrences")
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Schedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Card");
+
+                    b.Navigation("Schedule");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.ClassDivision", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.SchoolClass", "SchoolClass")
+                        .WithMany("Divisions")
+                        .HasForeignKey("SchoolClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Classroom", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Grade", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Lesson", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonClass", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Lesson", "Lesson")
+                        .WithMany("Classes")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.SchoolClass", "SchoolClass")
+                        .WithMany()
+                        .HasForeignKey("SchoolClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonClassroom", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Lesson", "Lesson")
+                        .WithMany("Classrooms")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("Lesson");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonGroup", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Lesson", "Lesson")
+                        .WithMany("Groups")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.StudentGroup", "StudentGroup")
+                        .WithMany()
+                        .HasForeignKey("StudentGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("StudentGroup");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.LessonTeacher", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.Lesson", "Lesson")
+                        .WithMany("Teachers")
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Lesson");
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Period", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany("Periods")
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Shift", "Shift")
+                        .WithMany("Periods")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AcademicYear");
+
+                    b.Navigation("Shift");
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.Schedule", b =>
@@ -329,7 +1770,21 @@ namespace DarsJadvali.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("DarsJadvali.Domain.Entities.Schedule", "CopiedFromSchedule")
+                        .WithMany()
+                        .HasForeignKey("CopiedFromScheduleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Term", "Term")
+                        .WithMany("Schedules")
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("AcademicYear");
+
+                    b.Navigation("CopiedFromSchedule");
+
+                    b.Navigation("Term");
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.ScheduleEntry", b =>
@@ -337,7 +1792,7 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.HasOne("DarsJadvali.Domain.Entities.ClassGroup", "ClassGroup")
                         .WithMany("ScheduleEntries")
                         .HasForeignKey("ClassGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("DarsJadvali.Domain.Entities.Schedule", "Schedule")
@@ -349,13 +1804,13 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.HasOne("DarsJadvali.Domain.Entities.Subject", "Subject")
                         .WithMany("ScheduleEntries")
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("DarsJadvali.Domain.Entities.Teacher", "Teacher")
                         .WithMany("ScheduleEntries")
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ClassGroup");
@@ -367,24 +1822,113 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.SchoolClass", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Teacher", "ClassTeacher")
+                        .WithMany()
+                        .HasForeignKey("ClassTeacherId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Grade", "Grade")
+                        .WithMany("SchoolClasses")
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Classroom", "HomeClassroom")
+                        .WithMany()
+                        .HasForeignKey("HomeClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DarsJadvali.Domain.Entities.Shift", "Shift")
+                        .WithMany("SchoolClasses")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AcademicYear");
+
+                    b.Navigation("ClassTeacher");
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("HomeClassroom");
+
+                    b.Navigation("Shift");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Shift", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany("Shifts")
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.StudentGroup", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.ClassDivision", "ClassDivision")
+                        .WithMany("StudentGroups")
+                        .HasForeignKey("ClassDivisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DarsJadvali.Domain.Entities.SchoolClass", "SchoolClass")
+                        .WithMany("StudentGroups")
+                        .HasForeignKey("SchoolClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClassDivision");
+
+                    b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Subject", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Teacher", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AcademicYear");
+                });
+
             modelBuilder.Entity("DarsJadvali.Domain.Entities.TeacherAssignment", b =>
                 {
                     b.HasOne("DarsJadvali.Domain.Entities.ClassGroup", "ClassGroup")
                         .WithMany("Assignments")
                         .HasForeignKey("ClassGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("DarsJadvali.Domain.Entities.Subject", "Subject")
                         .WithMany("Assignments")
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("DarsJadvali.Domain.Entities.Teacher", "Teacher")
                         .WithMany("Assignments")
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ClassGroup");
@@ -405,9 +1949,59 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Term", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany("Terms")
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.TimeOff", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AcademicYear");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.WorkDay", b =>
+                {
+                    b.HasOne("DarsJadvali.Domain.Entities.AcademicYear", "AcademicYear")
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("AcademicYear");
+                });
+
             modelBuilder.Entity("DarsJadvali.Domain.Entities.AcademicYear", b =>
                 {
+                    b.Navigation("Periods");
+
                     b.Navigation("Schedules");
+
+                    b.Navigation("Shifts");
+
+                    b.Navigation("Terms");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Card", b =>
+                {
+                    b.Navigation("Classrooms");
+
+                    b.Navigation("Occurrences");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.ClassDivision", b =>
+                {
+                    b.Navigation("StudentGroups");
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.ClassGroup", b =>
@@ -417,9 +2011,41 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Navigation("ScheduleEntries");
                 });
 
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Grade", b =>
+                {
+                    b.Navigation("SchoolClasses");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Lesson", b =>
+                {
+                    b.Navigation("Cards");
+
+                    b.Navigation("Classes");
+
+                    b.Navigation("Classrooms");
+
+                    b.Navigation("Groups");
+
+                    b.Navigation("Teachers");
+                });
+
             modelBuilder.Entity("DarsJadvali.Domain.Entities.Schedule", b =>
                 {
                     b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.SchoolClass", b =>
+                {
+                    b.Navigation("Divisions");
+
+                    b.Navigation("StudentGroups");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Shift", b =>
+                {
+                    b.Navigation("Periods");
+
+                    b.Navigation("SchoolClasses");
                 });
 
             modelBuilder.Entity("DarsJadvali.Domain.Entities.Subject", b =>
@@ -436,6 +2062,11 @@ namespace DarsJadvali.Infrastructure.Migrations
                     b.Navigation("Availabilities");
 
                     b.Navigation("ScheduleEntries");
+                });
+
+            modelBuilder.Entity("DarsJadvali.Domain.Entities.Term", b =>
+                {
+                    b.Navigation("Schedules");
                 });
 #pragma warning restore 612, 618
         }

@@ -27,6 +27,31 @@ public sealed class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
             .IsRequired()
             .HasDefaultValue(true);
 
-        builder.HasIndex(x => x.FullName);
+        // --- sxema v2 kengaytmalari ---------------------------------------
+        builder.Property(x => x.ShortName).HasMaxLength(24);
+        builder.Property(x => x.FirstName).HasMaxLength(128);
+        builder.Property(x => x.LastName).HasMaxLength(128);
+        builder.Property(x => x.Email).HasMaxLength(256);
+        builder.Property(x => x.Gender).HasConversion<int?>();
+
+        // Yuklama nazorati: shartnoma soati + stavka ulushi.
+        builder.Property(x => x.ContractRate).HasColumnType("decimal(4,2)");
+
+        builder.Property(x => x.IsVacancy).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.ExternalId).HasMaxLength(64);
+        builder.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
+
+        builder.HasOne(x => x.AcademicYear)
+            .WithMany()
+            .HasForeignKey(x => x.AcademicYearId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(x => x.FullName).HasDatabaseName("IX_Teachers_FullName");
+
+        // Qisqartma yil ichida noyob (faqat to'ldirilgan va o'chirilmaganlar orasida).
+        builder.HasIndex(x => new { x.AcademicYearId, x.ShortName })
+            .IsUnique()
+            .HasFilter("\"AcademicYearId\" IS NOT NULL AND \"ShortName\" IS NOT NULL AND \"IsDeleted\" = 0")
+            .HasDatabaseName("UX_Teachers_AcademicYearId_ShortName");
     }
 }

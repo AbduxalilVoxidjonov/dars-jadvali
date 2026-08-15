@@ -23,6 +23,41 @@ public class Schedule : BaseEntity
     /// <summary>Yaratilgan vaqti (UTC).</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    /// <summary>Shu jadvalga tegishli dars yozuvlari.</summary>
+    // ---------------------------------------------------------------------
+    // Sxema v2 kengaytmalari
+    // ---------------------------------------------------------------------
+
+    /// <summary>Ixtiyoriy izoh.</summary>
+    public string? Note { get; set; }
+
+    /// <summary>
+    /// Shu jadval varianti qaysi chorak uchun. <c>null</c> — chorakka bog'lanmagan
+    /// (eski yozuvlar va "butun yil" variantlari).
+    /// </summary>
+    /// <remarks>
+    /// Tasdiqlangan qaror: <b>chorak = alohida jadval varianti</b>. Har chorak uchun
+    /// o'z <see cref="Schedule"/> yozuvi bo'ladi, <c>TermsMask</c> ISHLATILMAYDI.
+    /// </remarks>
+    public int? TermId { get; set; }
+
+    /// <summary>Chorak.</summary>
+    public Term? Term { get; set; }
+
+    /// <summary>
+    /// Shu variant qaysi jadvaldan nusxa olingan — chorakni oldingisidan nusxa olib
+    /// boshlash uchun. Nusxa olish tarixi shu ustunda saqlanadi.
+    /// </summary>
+    public int? CopiedFromScheduleId { get; set; }
+
+    /// <summary>Nusxa olingan manba jadval.</summary>
+    public Schedule? CopiedFromSchedule { get; set; }
+
+    /// <summary>
+    /// Shu variantdagi hafta sikli: <c>1</c> — har hafta bir xil, <c>2</c> — juft/toq hafta.
+    /// <c>Card.WeeksMask</c> bitlari shu songa nisbatan talqin qilinadi.
+    /// </summary>
+    public int WeeksInCycle { get; set; } = 1;
+
+    /// <summary>Shu jadvalga tegishli dars yozuvlari (eski model).</summary>
     public ICollection<ScheduleEntry> Entries { get; set; } = new List<ScheduleEntry>();
 }

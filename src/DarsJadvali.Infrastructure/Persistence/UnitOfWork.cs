@@ -1,11 +1,12 @@
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Domain.Entities;
 using DarsJadvali.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace DarsJadvali.Infrastructure.Persistence;
 
 /// <summary>Bitta <see cref="AppDbContext"/> ustida ishlaydigan repozitoriylar to'plami.</summary>
-public sealed class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : ITransactionalUnitOfWork
 {
     private readonly AppDbContext _context;
 
@@ -34,4 +35,50 @@ public sealed class UnitOfWork : IUnitOfWork
     public IRepository<LessonSlot> LessonSlots => _lessonSlots ??= new EfRepository<LessonSlot>(_context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
+
+    /// <inheritdoc />
+    public async Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action, CancellationToken ct = default)
+    {
+        await ExecuteInTransactionAsync<object?>(async token =>
+        {
+            await action(token).ConfigureAwait(false);
+            return null;
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<TResult> ExecuteInTransactionAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> action, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        // Qayta kirishga xavfsiz: tashqarida allaqachon tranzaksiya ochiq bo'lsa
+        // ichkarida yangisi ochilmaydi — hammasi bitta atomik amal bo'lib qoladi.
+        if (_context.Database.CurrentTransaction is not null)
+        {
+            return await action(ct).ConfigureAwait(false);
+        }
+
+        await using var transaction = await _context.Database
+            .BeginTransactionAsync(ct)
+            .ConfigureAwait(false);
+
+        try
+        {
+            var result = await action(ct).ConfigureAwait(false);
+            await _context.SaveChangesAsync(ct).ConfigureAwait(false);
+            await transaction.CommitAsync(ct).ConfigureAwait(false);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct).ConfigureAwait(false);
+
+            // Rollback'dan keyin kontekst keshida "saqlangan" deb belgilangan, lekin
+            // aslida bazaga tushmagan o'zgarishlar qolmasligi kerak.
+            _context.ChangeTracker.Clear();
+            throw;
+        }
+    }
 }
