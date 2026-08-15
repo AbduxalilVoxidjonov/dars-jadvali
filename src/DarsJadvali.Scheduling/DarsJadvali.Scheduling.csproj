@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DarsJadvali.Scheduling</RootNamespace>
+    <AssemblyName>DarsJadvali.Scheduling</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <Optimize Condition="'$(Configuration)'=='Release'">true</Optimize>
+    <!--
+      Bu loyiha ATAYLAB hech qanday tashqi bog'liqliksiz (EF Core, DB, UI yo'q).
+      Faqat BCL. Sof algoritm kutubxonasi — o'z ichki modeli bilan.
+    -->
+  </PropertyGroup>
+
+</Project>
