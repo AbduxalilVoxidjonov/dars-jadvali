@@ -26,6 +26,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Chop etish dizaynlari (JSON) va HTML eksport shabloni assembly ichiga o'rnatiladi:
+         ko'chma (portable) rejimda tashqi papkaga bog'liqlik bo'lmasin. -->
+    <EmbeddedResource Include="Export\Printing\Designs\*.json" />
+    <EmbeddedResource Include="Export\Printing\Templates\*.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DarsJadvali.Application\DarsJadvali.Application.csproj" />
   </ItemGroup>
 
