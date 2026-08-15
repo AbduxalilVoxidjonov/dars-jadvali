@@ -86,6 +86,7 @@ public partial class App : Avalonia.Application
         services.AddTransient<AvailabilityViewModel>();
         services.AddTransient<TimetableViewModel>();
         services.AddTransient<AcademicYearsViewModel>();
+        services.AddTransient<AscImportViewModel>();
         services.AddTransient<AboutViewModel>();
 
         // Asosiy oyna — boshqa sahifalar MainViewModel'ga tayanadi, shuning uchun singleton

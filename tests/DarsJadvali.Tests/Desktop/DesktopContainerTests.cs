@@ -39,6 +39,7 @@ public sealed class DesktopContainerTests
     [InlineData(typeof(TimetableViewModel))]
     [InlineData(typeof(TimetableBoardViewModel))]
     [InlineData(typeof(AcademicYearsViewModel))]
+    [InlineData(typeof(AscImportViewModel))]
     [InlineData(typeof(AboutViewModel))]
     public void Har_bir_sahifa_ViewModeli_konteynerdan_yigiladi(Type viewModelType)
     {
@@ -53,6 +54,37 @@ public sealed class DesktopContainerTests
             var viewModel = scope.ServiceProvider.GetRequiredService(viewModelType);
 
             Assert.IsAssignableFrom<ViewModelBase>(viewModel);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DARSJADVALI_DB", previous);
+        }
+    }
+
+    /// <summary>
+    /// Chap menyudagi HAR BIR band ochiladigan bo'lsin: bandi bor, lekin konteynerda
+    /// ro'yxatdan o'tmagan sahifa foydalanuvchida "Sahifani ochib bo'lmadi" beradi.
+    /// </summary>
+    [Fact]
+    public void Menyudagi_har_bir_band_ochiladi()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"dj-di-{Guid.NewGuid():N}.db");
+        var previous = Environment.GetEnvironmentVariable("DARSJADVALI_DB");
+
+        try
+        {
+            using var provider = Build(dbPath);
+            var main = provider.GetRequiredService<MainViewModel>();
+
+            // aSc importi menyuda bor — aks holda foydalanuvchi importerga umuman yeta olmaydi.
+            Assert.Contains(main.MenuItems, item => item.ViewModelType == typeof(AscImportViewModel));
+
+            foreach (var item in main.MenuItems)
+            {
+                using var scope = provider.CreateScope();
+                var viewModel = scope.ServiceProvider.GetRequiredService(item.ViewModelType);
+                Assert.IsAssignableFrom<ViewModelBase>(viewModel);
+            }
         }
         finally
         {

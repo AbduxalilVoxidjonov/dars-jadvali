@@ -42,6 +42,10 @@ public static class AscXmlReader
     {
         ArgumentNullException.ThrowIfNull(xml);
 
+        // aSc ba'zi tillarda encoding="windows-1251" (kirill) bilan eksport qiladi.
+        // .NET 8 bu kod sahifasini o'zi bilmaydi — provayder shu yerda ulanadi.
+        LegacyEncodings.EnsureRegistered();
+
         XDocument doc;
         try
         {

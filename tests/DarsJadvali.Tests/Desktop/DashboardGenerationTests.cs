@@ -45,6 +45,10 @@ public sealed class DashboardGenerationTests
         public Task<string?> SaveFileAsync(
             string suggestedFileName, string filterName = "PDF hujjat", string extension = "pdf")
             => Task.FromResult<string?>(null);
+
+        public Task<string?> OpenFileAsync(
+            string title = "Faylni tanlang", string filterName = "XML fayl", string extension = "xml")
+            => Task.FromResult<string?>(null);
     }
 
     private sealed class StubPdfExporter : IScopedTimetablePdfExporter

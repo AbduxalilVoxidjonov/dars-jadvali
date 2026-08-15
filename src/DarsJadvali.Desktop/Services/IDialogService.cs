@@ -25,4 +25,16 @@ public interface IDialogService
 
     /// <summary>PDF saqlash uchun fayl tanlash dialogi. Bekor qilinsa null.</summary>
     Task<string?> SaveFileAsync(string suggestedFileName, string filterName = "PDF hujjat", string extension = "pdf");
+
+    /// <summary>
+    /// Mavjud faylni ochish dialogi (Avalonia <c>IStorageProvider</c>).
+    /// Tanlangan faylning to'liq yo'lini qaytaradi; bekor qilinsa <c>null</c>.
+    /// </summary>
+    /// <param name="title">Oyna sarlavhasi.</param>
+    /// <param name="filterName">Filtr nomi (masalan "aSc TimeTables XML").</param>
+    /// <param name="extension">Kengaytma, nuqtasiz (masalan "xml").</param>
+    Task<string?> OpenFileAsync(
+        string title = "Faylni tanlang",
+        string filterName = "XML fayl",
+        string extension = "xml");
 }

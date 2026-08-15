@@ -58,6 +58,7 @@ public sealed partial class MainViewModel : ViewModelBase
             new("O'qituvchi vaqti", "ClockOutline", typeof(AvailabilityViewModel)),
             new("Dars jadvali", "TableLarge", typeof(TimetableViewModel)),
             new("O'quv yillari", "CalendarStar", typeof(AcademicYearsViewModel)),
+            new("aSc importi", "FileImportOutline", typeof(AscImportViewModel)),
             new("Dastur haqida", "InformationOutline", typeof(AboutViewModel)),
         };
 

@@ -15,6 +15,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
     <!-- PDF eksport. MIT litsenziya, hech qanday daromad/foydalanish sharti yo'q. -->
     <PackageReference Include="PDFsharp" Version="6.2.4" />
+    <!-- ATAYLAB qo'shilgan YANGI paket (Microsoft, MIT). Sabab: .NET 8 faqat Unicode va
+         ASCII kodirovkalari bilan keladi, aSc esa ba'zi tillarda
+         encoding="windows-1251" (kirill) bilan eksport qiladi. Bu paketsiz bunday fayl
+         "kodirovka qo'llab-quvvatlanmaydi" xatosi bilan umuman o'qilmaydi.
+         Faqat Import/Xml/LegacyEncodings.cs da ishlatiladi. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

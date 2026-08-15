@@ -45,6 +45,10 @@ public sealed class ClassGroupsShiftViewModelTests
         public Task<string?> SaveFileAsync(
             string suggestedFileName, string filterName = "PDF hujjat", string extension = "pdf")
             => Task.FromResult<string?>(null);
+
+        public Task<string?> OpenFileAsync(
+            string title = "Faylni tanlang", string filterName = "XML fayl", string extension = "xml")
+            => Task.FromResult<string?>(null);
     }
 
     /// <summary>Eski modelda ikkita sinf + v2 ga ko'chirish (dastur ham shu yo'ldan boradi).</summary>

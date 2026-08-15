@@ -153,6 +153,45 @@ public sealed class DialogService : IDialogService
         });
     }
 
+    public Task<string?> OpenFileAsync(
+        string title = "Faylni tanlang",
+        string filterName = "XML fayl",
+        string extension = "xml")
+    {
+        var ext = string.IsNullOrWhiteSpace(extension) ? "xml" : extension.TrimStart('.');
+
+        return RunOnUiAsync(async () =>
+        {
+            var owner = GetOwner();
+            var top = owner is null ? null : TopLevel.GetTopLevel(owner);
+            if (top?.StorageProvider is null)
+            {
+                return null;
+            }
+
+            var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType(filterName)
+                    {
+                        Patterns = new[] { "*." + ext },
+                    },
+                },
+            }).ConfigureAwait(true);
+
+            if (files.Count == 0)
+            {
+                return null;
+            }
+
+            var picked = files[0];
+            return picked.TryGetLocalPath() ?? picked.Path.LocalPath;
+        });
+    }
+
     private static IReadOnlyList<DialogLine> BuildLines(ValidationResult result)
     {
         var lines = new List<DialogLine>(result.Conflicts.Count);

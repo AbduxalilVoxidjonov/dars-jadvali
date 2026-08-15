@@ -1,0 +1,377 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:DarsJadvali.Desktop.ViewModels"
+             xmlns:conv="clr-namespace:DarsJadvali.Desktop.Converters"
+             xmlns:ent="clr-namespace:DarsJadvali.Domain.Entities;assembly=DarsJadvali.Domain"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             x:Class="DarsJadvali.Desktop.Views.AscImportView"
+             x:DataType="vm:AscImportViewModel"
+             x:CompileBindings="True">
+
+  <DockPanel Margin="24" LastChildFill="True">
+
+    <!-- ============ Sarlavha ============ -->
+    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+      <TextBlock Text="aSc TimeTables XML importi"
+                 FontSize="22"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource AppTextBrush}" />
+      <TextBlock Text="Fayl tanlanadi → sozlamalar kiritiladi → oldindan ko'riladi → tasdiqlangach bazaga yoziladi. Oldindan ko'rish bazaga hech narsa yozmaydi."
+                 FontSize="12"
+                 TextWrapping="Wrap"
+                 Margin="0,4,0,0"
+                 Foreground="{DynamicResource AppMutedTextBrush}" />
+    </StackPanel>
+
+    <!-- ============ Holat qatori va jarayon ============ -->
+    <Border DockPanel.Dock="Bottom"
+            Margin="0,12,0,0"
+            Padding="12,8"
+            CornerRadius="8"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Spacing="4">
+          <TextBlock Text="{Binding StatusMessage}"
+                     FontSize="12"
+                     TextWrapping="Wrap"
+                     Foreground="{DynamicResource AppTextBrush}" />
+          <TextBlock Text="{Binding ProgressText}"
+                     FontSize="11"
+                     IsVisible="{Binding IsBusy}"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+          <ProgressBar Height="4"
+                       IsIndeterminate="True"
+                       IsVisible="{Binding IsBusy}" />
+        </StackPanel>
+
+        <Button Grid.Column="1"
+                Content="To'xtatish"
+                Command="{Binding CancelRunCommand}"
+                IsVisible="{Binding IsBusy}"
+                Margin="12,0,0,0"
+                Padding="14,6" />
+      </Grid>
+    </Border>
+
+    <!-- ============ Asosiy maydon ============ -->
+    <Grid ColumnDefinitions="360,*">
+
+      <!-- Chapda: fayl va sozlamalar -->
+      <ScrollViewer Grid.Column="0" Margin="0,0,16,0" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+
+          <!-- 1-qadam: fayl -->
+          <Border Padding="16"
+                  CornerRadius="8"
+                  Background="{DynamicResource AppSurfaceBrush}"
+                  BorderBrush="{DynamicResource AppBorderBrush}"
+                  BorderThickness="1">
+            <StackPanel Spacing="8">
+              <TextBlock Text="1-qadam. aSc XML fayli"
+                         FontSize="15"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppTextBrush}" />
+
+              <Button Content="Faylni tanlash..."
+                      Command="{Binding ChooseFileCommand}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"
+                      Padding="14,8" />
+
+              <TextBlock Text="{Binding FileSummary}"
+                         FontSize="12"
+                         TextWrapping="Wrap"
+                         Foreground="{DynamicResource AppTextBrush}"
+                         IsVisible="{Binding HasFile}" />
+
+              <TextBlock Text="{Binding FilePath}"
+                         FontSize="10"
+                         TextWrapping="Wrap"
+                         Foreground="{DynamicResource AppMutedTextBrush}"
+                         IsVisible="{Binding HasFile}" />
+
+              <TextBlock Text="Fayl hali tanlanmagan."
+                         FontSize="12"
+                         Foreground="{DynamicResource AppMutedTextBrush}"
+                         IsVisible="{Binding !HasFile}" />
+            </StackPanel>
+          </Border>
+
+          <!-- 2-qadam: sozlamalar -->
+          <Border Padding="16"
+                  CornerRadius="8"
+                  Background="{DynamicResource AppSurfaceBrush}"
+                  BorderBrush="{DynamicResource AppBorderBrush}"
+                  BorderThickness="1">
+            <StackPanel Spacing="10">
+              <TextBlock Text="2-qadam. Sozlamalar"
+                         FontSize="15"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppTextBrush}" />
+
+              <StackPanel Spacing="4">
+                <TextBlock Text="Maqsad o'quv yili (majburiy)"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+                <ComboBox ItemsSource="{Binding AcademicYears}"
+                          SelectedItem="{Binding SelectedAcademicYear, Mode=TwoWay}"
+                          IsEnabled="{Binding IsNotBusy}"
+                          HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="ent:AcademicYear">
+                      <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="Oldindan ko'rish ham shu yilga tayanadi: «yangi» va «yangilanadi» farqi aynan mavjud ma'lumotga bog'liq."
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+              </StackPanel>
+
+              <StackPanel Spacing="4">
+                <TextBlock Text="Mavjud ma'lumot bilan nima qilish"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+
+                <RadioButton GroupName="MergeMode"
+                             Content="Birlashtirish — hech narsa o'chirilmaydi"
+                             IsEnabled="{Binding IsNotBusy}"
+                             IsChecked="{Binding IsMergeMode, Mode=TwoWay}" />
+
+                <RadioButton GroupName="MergeMode"
+                             Content="Almashtirish — yilning barcha darslari o'chiriladi"
+                             Foreground="{DynamicResource AppErrorBrush}"
+                             IsEnabled="{Binding IsNotBusy}"
+                             IsChecked="{Binding IsReplaceMode, Mode=TwoWay}" />
+              </StackPanel>
+
+              <CheckBox Content="Kartochkalarni (tayyor jadvalni) import qilish"
+                        IsChecked="{Binding ImportCards, Mode=TwoWay}"
+                        IsEnabled="{Binding IsNotBusy}" />
+
+              <CheckBox Content="O'quvchilarni o'tkazib yuborish"
+                        IsChecked="{Binding SkipStudents, Mode=TwoWay}"
+                        IsEnabled="{Binding IsNotBusy}" />
+
+              <CheckBox Content="Birinchi jadval variantini faol qilish"
+                        IsChecked="{Binding ActivateFirstSchedule, Mode=TwoWay}"
+                        IsEnabled="{Binding IsNotBusy}" />
+
+              <StackPanel Spacing="4">
+                <TextBlock Text="Jadval varianti nomining boshlanishi"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppMutedTextBrush}" />
+                <TextBox Text="{Binding SchedulePrefix, Mode=TwoWay}"
+                         Watermark="aSc import"
+                         IsEnabled="{Binding IsNotBusy}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 3-qadam: amallar -->
+          <Border Padding="16"
+                  CornerRadius="8"
+                  Background="{DynamicResource AppSurfaceBrush}"
+                  BorderBrush="{DynamicResource AppBorderBrush}"
+                  BorderThickness="1">
+            <StackPanel Spacing="8">
+              <TextBlock Text="3-qadam. Ko'rish va import"
+                         FontSize="15"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppTextBrush}" />
+
+              <Button Content="Oldindan ko'rish"
+                      Command="{Binding PreviewCommand}"
+                      IsEnabled="{Binding CanPreview}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"
+                      Padding="14,8" />
+
+              <Button Content="Import qilish"
+                      Command="{Binding ImportCommand}"
+                      IsEnabled="{Binding CanImport}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"
+                      Padding="14,8" />
+
+              <TextBlock Text="Import tugmasi oldindan ko'rish muvaffaqiyatli bo'lgandan keyin yonadi."
+                         FontSize="10"
+                         TextWrapping="Wrap"
+                         Foreground="{DynamicResource AppMutedTextBrush}" />
+
+              <Button Content="Dars jadvalini ochish"
+                      Command="{Binding GoToTimetableCommand}"
+                      IsVisible="{Binding HasSuccessfulImport}"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"
+                      Padding="14,8" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- O'ngda: hisobot -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+          <TextBlock Text="{Binding ResultSummary}"
+                     FontSize="14"
+                     FontWeight="SemiBold"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasReport}"
+                     Foreground="{DynamicResource AppTextBrush}" />
+          <TextBlock Text="{Binding SourceSummary}"
+                     FontSize="11"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasReport}"
+                     Foreground="{DynamicResource AppMutedTextBrush}" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                CornerRadius="8"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}"
+                BorderThickness="1">
+
+          <Panel>
+            <!-- Hisobot hali yo'q -->
+            <TextBlock Text="Hisobot bu yerda ko'rinadi. Avval fayl tanlang va «Oldindan ko'rish» tugmasini bosing."
+                       Margin="24"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Top"
+                       IsVisible="{Binding !HasReport}"
+                       Foreground="{DynamicResource AppMutedTextBrush}" />
+
+            <ScrollViewer IsVisible="{Binding HasReport}" VerticalScrollBarVisibility="Auto">
+              <StackPanel Margin="16" Spacing="14">
+
+                <!-- Bo'limlar jadvali -->
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Bo'limlar bo'yicha"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource AppTextBrush}" />
+
+                  <DataGrid ItemsSource="{Binding Stats}"
+                            AutoGenerateColumns="False"
+                            IsReadOnly="True"
+                            HeadersVisibility="Column"
+                            GridLinesVisibility="Horizontal"
+                            MaxHeight="320"
+                            Background="Transparent"
+                            BorderThickness="0">
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Bo'lim" Width="*"
+                                          Binding="{Binding Title, DataType=vm:ImportStatRowViewModel}" />
+                      <DataGridTextColumn Header="Topildi" Width="90"
+                                          Binding="{Binding Found, DataType=vm:ImportStatRowViewModel}" />
+                      <DataGridTextColumn Header="Yaratildi" Width="95"
+                                          Binding="{Binding Created, DataType=vm:ImportStatRowViewModel}" />
+                      <DataGridTextColumn Header="Yangilandi" Width="105"
+                                          Binding="{Binding Updated, DataType=vm:ImportStatRowViewModel}" />
+                      <DataGridTextColumn Header="O'tkazildi" Width="100"
+                                          Binding="{Binding Skipped, DataType=vm:ImportStatRowViewModel}" />
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </StackPanel>
+
+                <!-- Kod bo'yicha guruhlangan xabarlar -->
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding MessagesTitle}"
+                             FontSize="14"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource AppTextBrush}" />
+
+                  <TextBlock Text="Bir xil kodli xabarlar bitta qatorga yig'ilgan — sonini va namunalarini ko'rish uchun qatorni oching."
+                             FontSize="10"
+                             TextWrapping="Wrap"
+                             IsVisible="{Binding HasMessages}"
+                             Foreground="{DynamicResource AppMutedTextBrush}" />
+
+                  <TextBlock Text="Hech qanday ogohlantirish yo'q."
+                             FontSize="12"
+                             IsVisible="{Binding !HasMessages}"
+                             Foreground="{DynamicResource AppSuccessBrush}" />
+
+                  <ItemsControl ItemsSource="{Binding MessageGroups}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ImportMessageGroupViewModel">
+                        <Expander Margin="0,0,0,6"
+                                  HorizontalAlignment="Stretch"
+                                  Background="{Binding Severity, Converter={x:Static conv:ImportSeverityToBrushConverter.Instance}, ConverterParameter=Background}">
+                          <Expander.Header>
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="{Binding Header}"
+                                         FontSize="13"
+                                         FontWeight="SemiBold"
+                                         TextWrapping="Wrap"
+                                         Foreground="{Binding Severity, Converter={x:Static conv:ImportSeverityToBrushConverter.Instance}}" />
+                              <TextBlock Text="{Binding CodeText}"
+                                         FontSize="10"
+                                         Foreground="{DynamicResource AppMutedTextBrush}" />
+                            </StackPanel>
+                          </Expander.Header>
+
+                          <StackPanel Spacing="3" Margin="4,4,4,8">
+                            <ItemsControl ItemsSource="{Binding Samples}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                  <TextBlock Text="{Binding}"
+                                             FontSize="11"
+                                             TextWrapping="Wrap"
+                                             Foreground="{DynamicResource AppTextBrush}" />
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="{Binding MoreText}"
+                                       FontSize="11"
+                                       FontStyle="Italic"
+                                       IsVisible="{Binding HasMore}"
+                                       Foreground="{DynamicResource AppMutedTextBrush}" />
+                          </StackPanel>
+                        </Expander>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+
+                <!-- To'liq matnli hisobot -->
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="To'liq hisobot"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource AppTextBrush}" />
+                    <Button Grid.Column="1"
+                            Content="Nusxalash"
+                            Command="{Binding CopyReportCommand}"
+                            Padding="12,4" />
+                  </Grid>
+
+                  <Border Padding="12"
+                          CornerRadius="6"
+                          Background="{DynamicResource AppBackgroundBrush}"
+                          BorderBrush="{DynamicResource AppBorderBrush}"
+                          BorderThickness="1">
+                    <SelectableTextBlock Text="{Binding ReportText}"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="11"
+                                         TextWrapping="NoWrap"
+                                         Foreground="{DynamicResource AppTextBrush}" />
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Panel>
+        </Border>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</UserControl>
