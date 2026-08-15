@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ataylab "iflos" eksport: yetim havolalar, -1 sentinellar, bo'sh maydonlar, kasr soat,
+  qo'llab-quvvatlanmaydigan bo'limlar. Import YIQILMASLIGI va hammasini
+  ogohlantirishga yozishi kerak.
+-->
+<timetable importtype="database" options="decimalseparatordot" displayname="aSc messy">
+  <periods columns="period,name,short,starttime,endtime">
+    <period period="1" name="1-soat" short="1" starttime="8:00" endtime="8:45"/>
+    <period period="2" name="" short="" starttime="" endtime=""/>
+    <period period="-3" name="Noto'g'ri" short="x" starttime="8:00" endtime="8:45"/>
+  </periods>
+
+  <subjects columns="id,name,short">
+    <subject id="S1" name="Matematika" short="Mat"/>
+    <subject id="S2" name="" short=""/>
+  </subjects>
+
+  <teachers columns="id,name,short,gender">
+    <teacher id="T1" name="Aliyev Vali" short="AV" gender="X"/>
+    <teacher id="T2" name="Вакант" short="Vak"/>
+  </teachers>
+
+  <classrooms columns="id,name,short,capacity">
+    <classroom id="R1" name="101" short="101" capacity="0"/>
+  </classrooms>
+
+  <grades columns="grade,name,short">
+    <grade grade="7" name="7-parallel" short="P7"/>
+    <grade grade="99" name="Noto'g'ri parallel" short="X"/>
+  </grades>
+
+  <classes columns="id,name,short,classroomids,teacherid,grade">
+    <class id="C1" name="7-A" short="7A" classroomids="R1,RX" teacherid="-1" grade="7"/>
+    <class id="C2" name="7-B" short="7B" classroomids="" teacherid="TX" grade="42"/>
+  </classes>
+
+  <groups columns="id,classid,name,entireclass,divisiontag">
+    <group id="G1" classid="C1" name="1-guruh" entireclass="0" divisiontag="1"/>
+    <group id="GX" classid="CX" name="Yetim guruh" entireclass="0" divisiontag="1"/>
+  </groups>
+
+  <lessons columns="id,subjectid,classids,groupids,teacherids,classroomids,periodspercard,periodsperweek">
+    <lesson id="L1" subjectid="SX" classids="C1" groupids="" teacherids="T1" periodspercard="1" periodsperweek="2"/>
+    <lesson id="L2" subjectid="S1" classids="C1" groupids="G1" teacherids="TX" periodspercard="1" periodsperweek="1.5"/>
+    <lesson id="L3" subjectid="S1" classids="C2" groupids="" teacherids="" periodspercard="1" periodsperweek="0"/>
+    <lesson id="L4" subjectid="S1" classids="CX" groupids="GX" teacherids="T1" periodspercard="5" periodsperweek="1"/>
+  </lessons>
+
+  <cards columns="lessonid,period,days,weeks,terms,classroomids">
+    <card lessonid="L2" period="1" days="10000" weeks="" terms="" classroomids="RX"/>
+    <card lessonid="LZ" period="1" days="10000" weeks="" terms=""/>
+    <card lessonid="L2" period="99" days="10000" weeks="" terms=""/>
+    <card lessonid="L2" period="1" days="" weeks="" terms=""/>
+  </cards>
+
+  <students columns="id,classid,name">
+    <student id="ST1" classid="C1" name="Alisher"/>
+    <student id="ST2" classid="C1" name="Dilnoza"/>
+  </students>
+
+  <studentsubjects columns="studentid,subjectid">
+    <studentsubject studentid="ST1" subjectid="S1"/>
+  </studentsubjects>
+</timetable>

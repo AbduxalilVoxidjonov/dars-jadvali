@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- To'g'ri XML, lekin aSc eksporti emas: ildiz elementi <timetable> emas. -->
+<schoolExport version="1">
+  <teachers>
+    <teacher id="1" name="Aliyev Vali"/>
+  </teachers>
+</schoolExport>

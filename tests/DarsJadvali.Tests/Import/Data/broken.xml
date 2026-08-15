@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Yopilmagan teg — XML parseri xato beradi. -->
+<timetable importtype="database">
+  <subjects>
+    <subject id="S1" name="Matematika" short="Mat">
+  </subjects>
+</timetable>

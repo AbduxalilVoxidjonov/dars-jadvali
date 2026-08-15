@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Eski asctt2008 sxemasi: <days>, grades.id, lessons.weeks va cards.day (bitmask emas,
+  butun son). Import ikkala sxemani ham tushunishi kerak.
+-->
+<timetable importtype="database" options="groupstype1,decimalseparatordot" displayname="aSc Timetables 2008 XML">
+  <days columns="day,name,short">
+    <day day="0" name="Dushanba" short="Du"/>
+    <day day="1" name="Seshanba" short="Se"/>
+    <day day="2" name="Chorshanba" short="Ch"/>
+    <day day="3" name="Payshanba" short="Pa"/>
+    <day day="4" name="Juma" short="Ju"/>
+  </days>
+
+  <periods columns="period,starttime,endtime">
+    <period period="1" starttime="8:00" endtime="8:45"/>
+    <period period="2" starttime="8:55" endtime="9:40"/>
+  </periods>
+
+  <teachers columns="id,name,short">
+    <teacher id="1" name="Aliyev Vali" short="AV"/>
+  </teachers>
+
+  <subjects columns="id,name,short">
+    <subject id="1" name="Matematika" short="Mat"/>
+  </subjects>
+
+  <grades columns="id,name,short,grade">
+    <grade id="8" name="8-parallel" short="P8" grade="8"/>
+  </grades>
+
+  <classes columns="id,name,short,teacherid,grade">
+    <class id="1" name="8-A" short="8A" teacherid="1" grade="8"/>
+  </classes>
+
+  <groups columns="id,classid,name,entireclass,divisiontag,studentcount">
+    <group id="1" classid="1" name="Butun sinf" entireclass="1" divisiontag="0" studentcount="25"/>
+  </groups>
+
+  <lessons columns="id,subjectid,classids,groupids,teacherids,periodspercard,periodsperweek,weeks">
+    <lesson id="1" subjectid="1" classids="1" groupids="1" teacherids="1" periodspercard="1" periodsperweek="2" weeks="1"/>
+  </lessons>
+
+  <cards columns="lessonid,day,period">
+    <card lessonid="1" day="0" period="1"/>
+    <card lessonid="1" day="2" period="2"/>
+  </cards>
+</timetable>

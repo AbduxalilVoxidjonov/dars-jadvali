@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Butun sinf" darsi + guruh darsi AYNI slotda. aSc'da bu mumkin emas, lekin buzuq
+  eksportda uchraydi: import yiqilmasligi va ikkinchisini ogohlantirish bilan
+  o'tkazib yuborishi kerak.
+-->
+<timetable importtype="database" options="decimalseparatordot" displayname="aSc conflict">
+  <periods columns="period,short,starttime,endtime">
+    <period period="1" short="1" starttime="8:00" endtime="8:45"/>
+    <period period="2" short="2" starttime="8:55" endtime="9:40"/>
+  </periods>
+
+  <subjects columns="id,name,short">
+    <subject id="S1" name="Matematika" short="Mat"/>
+    <subject id="S2" name="Ingliz tili" short="Ing"/>
+  </subjects>
+
+  <teachers columns="id,name,short">
+    <teacher id="T1" name="Aliyev Vali" short="AV"/>
+    <teacher id="T2" name="Karimova Dilnoza" short="KD"/>
+  </teachers>
+
+  <classes columns="id,name,short">
+    <class id="C1" name="7-A" short="7A"/>
+  </classes>
+
+  <groups columns="id,classid,name,entireclass,divisiontag">
+    <group id="G0" classid="C1" name="Butun sinf" entireclass="1" divisiontag="0"/>
+    <group id="G1" classid="C1" name="1-guruh" entireclass="0" divisiontag="1"/>
+  </groups>
+
+  <lessons columns="id,subjectid,classids,groupids,teacherids,periodspercard,periodsperweek">
+    <lesson id="LA" subjectid="S1" classids="C1" groupids="G0" teacherids="T1" periodspercard="1" periodsperweek="1"/>
+    <lesson id="LB" subjectid="S2" classids="C1" groupids="G1" teacherids="T2" periodspercard="1" periodsperweek="1"/>
+  </lessons>
+
+  <cards columns="lessonid,period,days,weeks,terms">
+    <card lessonid="LA" period="1" days="10000" weeks="1" terms="1"/>
+    <card lessonid="LB" period="1" days="10000" weeks="1" terms="1"/>
+  </cards>
+</timetable>

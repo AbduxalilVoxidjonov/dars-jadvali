@@ -1,9 +1,11 @@
 using DarsJadvali.Application.Abstractions;
 using DarsJadvali.Application.Board;
 using DarsJadvali.Application.Export;
+using DarsJadvali.Application.Import;
 using DarsJadvali.Application.Services;
 using DarsJadvali.Infrastructure.Export;
 using DarsJadvali.Infrastructure.Export.Printing;
+using DarsJadvali.Infrastructure.Import.Xml;
 using DarsJadvali.Infrastructure.Persistence;
 using DarsJadvali.Infrastructure.Persistence.Projection;
 using DarsJadvali.Infrastructure.Persistence.Repositories;
@@ -61,7 +63,27 @@ public static class InfrastructureServiceRegistration
 
         services.AddSchedulingPersistence();
         services.AddExportServices();
+        services.AddImportServices();
         services.AddUpdateChecker();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Import servislari: aSc TimeTables XML eksportini o'qish va bazaga yuklash.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AddSchedulingPersistence"/> ga bog'liq — importer bandlik projektorini
+    /// (<c>ICardOccurrenceProjector</c>) chaqiradi. Testlar ikkalasini alohida qo'shishi
+    /// mumkin, shuning uchun bu yerda ham chaqiriladi (<c>TryAdd</c> tufayli takroriy
+    /// ro'yxatdan o'tkazish zararsiz).
+    /// </remarks>
+    public static IServiceCollection AddImportServices(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSchedulingPersistence();
+        services.TryAddScoped<IAscXmlImporter, AscXmlImporter>();
 
         return services;
     }

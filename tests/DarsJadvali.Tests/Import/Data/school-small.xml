@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kichik, LEKIN to'liq aSc namunasi: 2 sinf, har birida 3 bo'linish / 5 guruh,
+  juft dars, A/B hafta va 2 chorak. Real maktabning kichraytirilgan nusxasi.
+-->
+<timetable importtype="database" options="export:idprefix:%CHRID,decimalseparatordot" displayname="aSc Timetables 2012 XML">
+  <periods options="canadd" columns="period,name,short,starttime,endtime">
+    <period period="1" name="1-soat" short="1" starttime="8:00" endtime="8:45"/>
+    <period period="2" name="2-soat" short="2" starttime="8:55" endtime="9:40"/>
+    <period period="3" name="3-soat" short="3" starttime="9:50" endtime="10:35"/>
+    <period period="4" name="4-soat" short="4" starttime="10:45" endtime="11:30"/>
+    <period period="5" name="5-soat" short="5" starttime="11:40" endtime="12:25"/>
+    <period period="6" name="6-soat" short="6" starttime="12:35" endtime="13:20"/>
+  </periods>
+
+  <daysdefs options="canadd" columns="id,days,name,short">
+    <daysdef id="DANY" days="00000" name="Istalgan kun" short="*"/>
+    <daysdef id="DALL" days="11111" name="Har kuni" short="H"/>
+    <daysdef id="DMON" days="10000" name="Dushanba" short="Du"/>
+  </daysdefs>
+
+  <weeksdefs options="canadd" columns="id,weeks,name,short">
+    <weeksdef id="WALL" weeks="11" name="Har hafta" short="H"/>
+    <weeksdef id="WA" weeks="10" name="A hafta" short="A"/>
+    <weeksdef id="WB" weeks="01" name="B hafta" short="B"/>
+  </weeksdefs>
+
+  <termsdefs options="canadd" columns="id,terms,name,short">
+    <termsdef id="TALL" terms="11" name="Butun yil" short="Y"/>
+    <termsdef id="T1" terms="10" name="Birinchi chorak" short="1"/>
+    <termsdef id="T2" terms="01" name="Ikkinchi chorak" short="2"/>
+  </termsdefs>
+
+  <subjects options="canadd" columns="id,name,short">
+    <subject id="SMAT" name="Matematika" short="Mat"/>
+    <subject id="SFIZ" name="Fizika" short="Fiz"/>
+    <subject id="SING" name="Ingliz tili" short="Ing"/>
+  </subjects>
+
+  <teachers options="canadd" columns="id,name,short,gender,email">
+    <teacher id="TA" name="Aliyev Vali" short="AV" gender="M" email="av@maktab.uz"/>
+    <teacher id="TB" name="Karimova Dilnoza" short="KD" gender="F"/>
+    <teacher id="TC" name="Yusupov Bobur" short="YB" gender="M"/>
+  </teachers>
+
+  <classrooms options="canadd" columns="id,name,short,capacity">
+    <classroom id="R1" name="101-xona" short="101" capacity="30"/>
+    <classroom id="R2" name="102-xona" short="102" capacity="-1"/>
+  </classrooms>
+
+  <grades options="canadd" columns="grade,name,short">
+    <grade grade="5" name="5-parallel" short="P5"/>
+  </grades>
+
+  <classes options="canadd" columns="id,name,short,classroomids,teacherid,grade">
+    <class id="C5A" name="5-A" short="5A" classroomids="R1" teacherid="TA" grade="5"/>
+    <class id="C5B" name="5-B" short="5B" classroomids="R2" teacherid="TB" grade="5"/>
+  </classes>
+
+  <groups options="canadd" columns="id,classid,name,entireclass,divisiontag,studentcount">
+    <group id="GA0" classid="C5A" name="Butun sinf" entireclass="1" divisiontag="0" studentcount="30"/>
+    <group id="GA1" classid="C5A" name="1-guruh"    entireclass="0" divisiontag="1" studentcount="15"/>
+    <group id="GA2" classid="C5A" name="2-guruh"    entireclass="0" divisiontag="1" studentcount="15"/>
+    <group id="GA3" classid="C5A" name="O'g'illar"  entireclass="0" divisiontag="2" studentcount="16"/>
+    <group id="GA4" classid="C5A" name="Qizlar"     entireclass="0" divisiontag="2" studentcount="14"/>
+
+    <group id="GB0" classid="C5B" name="Butun sinf" entireclass="1" divisiontag="0" studentcount="28"/>
+    <group id="GB1" classid="C5B" name="1-guruh"    entireclass="0" divisiontag="1" studentcount="14"/>
+    <group id="GB2" classid="C5B" name="2-guruh"    entireclass="0" divisiontag="1" studentcount="14"/>
+    <group id="GB3" classid="C5B" name="O'g'illar"  entireclass="0" divisiontag="2" studentcount="15"/>
+    <group id="GB4" classid="C5B" name="Qizlar"     entireclass="0" divisiontag="2" studentcount="13"/>
+  </groups>
+
+  <lessons options="canadd" columns="id,subjectid,classids,groupids,teacherids,classroomids,periodspercard,periodsperweek,daysdefid,weeksdefid,termsdefid">
+    <!-- L1: butun sinfga matematika, 2 soat, har chorak -->
+    <lesson id="L1" subjectid="SMAT" classids="C5A" groupids="" teacherids="TA" classroomids="" periodspercard="1" periodsperweek="2" daysdefid="DANY" weeksdefid="WALL" termsdefid="TALL"/>
+    <!-- L2 va L3: bir bo'linishning ikki guruhi — BIR SLOTDA yonma-yon turishi shart -->
+    <lesson id="L2" subjectid="SING" classids="C5A" groupids="GA1" teacherids="TB" classroomids="R1,R2" periodspercard="1" periodsperweek="1" daysdefid="DANY" weeksdefid="WALL" termsdefid="TALL"/>
+    <lesson id="L3" subjectid="SING" classids="C5A" groupids="GA2" teacherids="TC" classroomids="" periodspercard="1" periodsperweek="1" daysdefid="DANY" weeksdefid="WALL" termsdefid="TALL"/>
+    <!-- L4: JUFT dars (periodspercard=2) -->
+    <lesson id="L4" subjectid="SFIZ" classids="C5B" groupids="GB0" teacherids="TA" classroomids="" periodspercard="2" periodsperweek="2" daysdefid="DMON" weeksdefid="WALL" termsdefid="TALL"/>
+    <!-- L5: FAQAT birinchi chorakda -->
+    <lesson id="L5" subjectid="SMAT" classids="C5A" groupids="" teacherids="TA" classroomids="" periodspercard="1" periodsperweek="1" daysdefid="DANY" weeksdefid="WALL" termsdefid="T1"/>
+    <!-- L6: faqat A haftada -->
+    <lesson id="L6" subjectid="SFIZ" classids="C5A" groupids="GA3" teacherids="TB" classroomids="" periodspercard="1" periodsperweek="1" daysdefid="DANY" weeksdefid="WA" termsdefid="TALL"/>
+  </lessons>
+
+  <cards options="canadd" columns="lessonid,period,days,weeks,terms,classroomids">
+    <card lessonid="L1" period="1" days="10000" weeks="11" terms="11" classroomids=""/>
+    <card lessonid="L1" period="1" days="01000" weeks="11" terms="11" classroomids=""/>
+    <card lessonid="L2" period="3" days="00100" weeks="11" terms="11" classroomids="R1"/>
+    <card lessonid="L3" period="3" days="00100" weeks="11" terms="11" classroomids="R2"/>
+    <card lessonid="L4" period="2" days="10000" weeks="11" terms="11" classroomids=""/>
+    <card lessonid="L5" period="5" days="00010" weeks="11" terms="10" classroomids=""/>
+    <card lessonid="L6" period="1" days="00001" weeks="10" terms="11" classroomids=""/>
+  </cards>
+</timetable>
